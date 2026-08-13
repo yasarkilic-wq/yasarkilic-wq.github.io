@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173957">
+<title>Story4Kids Admin</title>
+<style>
+:root{
+  --navy:#173957;--navy2:#285978;--cream:#fff9ef;--paper:#fff;--ink:#203342;--muted:#6f7881;
+  --line:#e5dac8;--ok:#17775a;--warn:#a06b16;--danger:#a64e4e;--blue:#367c9e;--soft:#f2f5f7;
+  --shadow:0 10px 28px rgba(29,52,70,.08);
+}
+*{box-sizing:border-box}
+html{background:#e9edf0}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#e9edf0}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:520px;min-height:100vh;margin:0 auto;background:var(--cream);box-shadow:0 0 35px #0002}
+header{position:sticky;top:0;z-index:30;background:rgba(23,57,87,.96);backdrop-filter:blur(18px);color:#fff;padding:13px 14px}
+.brand{display:flex;align-items:center;gap:10px}
+.brandmark{height:42px;width:42px;border-radius:50%;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:950;font-size:12px}
+.brand strong{display:block;font-size:17px}.brand small{opacity:.72;font-size:10px}
+.head-actions{margin-left:auto;display:flex;gap:7px}
+.iconbtn{width:36px;height:36px;border-radius:11px;border:1px solid #ffffff30;background:#ffffff12;color:white}
+main{padding:14px 13px 90px}
+h1{font-size:28px;line-height:1.07;color:var(--navy);margin:7px 0 9px}
+h2{font-size:21px;line-height:1.15;color:var(--navy);margin:5px 0 10px}
+h3{font-size:15px;margin:0 0 5px}
+p{line-height:1.42}
+.small{font-size:12px;color:var(--muted)}
+.mini{font-size:10px;color:var(--muted)}
+.section-title{margin:18px 3px 8px;text-transform:uppercase;letter-spacing:.09em;font-size:10px;font-weight:900;color:#857a70}
+.card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.hero{background:linear-gradient(145deg,#fffdf9,#f5e8d4);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.wrap{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-block;border-radius:999px;background:#edf1f4;padding:5px 8px;font-size:10px;font-weight:850}
+.pill.ok{background:#e5f4ed;color:var(--ok)}.pill.warn{background:#fff0d4;color:#87580d}.pill.blue{background:#e5f1f7;color:#296e90}.pill.red{background:#fbe9e9;color:#924848}
+.btn{width:100%;border:0;border-radius:13px;padding:13px 12px;background:var(--navy);color:white;font-weight:850;margin-top:8px}
+.btn.secondary{background:#fff;color:var(--navy);border:1.2px solid var(--navy)}
+.btn.soft{background:#edf2f5;color:var(--navy)}
+.btn.ok{background:var(--ok)}
+.btn.warn{background:#fff1d9;color:#80520b;border:1px solid #e3c383}
+.btn.danger{background:#fff0f0;color:#8e4242;border:1px solid #e1bcbc}
+.btn:disabled{opacity:.52;cursor:default}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.actions .btn{margin:0}
+input,textarea{width:100%;border:1px solid #d9d2c8;background:white;border-radius:12px;padding:12px 11px;color:var(--ink);outline:none}
+input:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px #17395715}
+label{display:block;font-size:11px;font-weight:850;color:#536574;margin:12px 2px 5px}
+textarea{min-height:85px;resize:vertical}
+.metric{font-size:28px;font-weight:950;color:var(--navy)}
+.progress{height:8px;background:#ece4d7;border-radius:99px;overflow:hidden}.progress>span{display:block;height:100%;background:var(--navy)}
+.story{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px}
+.story-head{display:flex;gap:9px;align-items:flex-start}
+.num{width:29px;height:29px;flex:0 0 29px;border-radius:9px;background:#edf2f5;display:grid;place-items:center;font-size:11px;font-weight:900;color:var(--navy)}
+.story-title{font-size:13px;font-weight:850;line-height:1.25}
+.desc{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
+.kv{display:grid;grid-template-columns:100px 1fr;gap:7px 8px;font-size:12px}.kv b{color:#697681}
+.rule{background:#f2f6f8;border-left:4px solid var(--navy);border-radius:0 11px 11px 0;padding:9px 10px;margin:7px 0;font-size:12px;line-height:1.4}
+.rule.ok{border-color:var(--ok);background:#edf8f3}.rule.warn{border-color:#ce8a24;background:#fff7e7}.rule.red{border-color:var(--danger);background:#fff0f0}
+.statusline{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #eee}.statusline:last-child{border:0}
+.statusline b{font-size:12px}.yes{color:var(--ok);font-weight:900}.no{color:var(--warn);font-weight:900}
+.imagebox{background:#eef1f3;border:1px solid #dce2e5;border-radius:16px;min-height:180px;display:grid;place-items:center;overflow:hidden;position:relative}
+.imagebox img{width:100%;height:auto;display:block}
+.imagebox .loading{padding:25px;text-align:center;color:var(--muted);font-size:12px}
+.variants{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.variant{border:2px solid transparent;background:#eef1f3;border-radius:13px;overflow:hidden;min-height:110px;position:relative}
+.variant.selected{border-color:var(--ok)}
+.variant img{width:100%;height:100%;object-fit:cover;display:block}
+.variant button{position:absolute;left:5px;right:5px;bottom:5px;border:0;border-radius:9px;background:#ffffffed;padding:7px 4px;font-size:10px;font-weight:850;color:var(--navy)}
+.bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#fffdf9ee;backdrop-filter:blur(15px);border-top:1px solid var(--line);padding:6px 3px max(7px,env(safe-area-inset-bottom));z-index:40}
+.bottomnav button{border:0;background:none;color:#606b74;font-size:9px;font-weight:800;padding:3px}.bottomnav span{display:block;font-size:18px;margin-bottom:2px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:74px;width:min(470px,calc(100% - 28px));z-index:100;border-radius:14px;padding:12px 13px;background:#1f3444;color:#fff;box-shadow:0 10px 30px #0003;font-size:12px;display:none}
+.toast.show{display:block}.toast.err{background:#8f4545}.toast.ok{background:#176b52}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid #ffffff55;border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:25px 12px;color:var(--muted);font-size:12px}
+.modal{position:fixed;inset:0;background:#13293b88;z-index:80;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.sheet{width:min(520px,100%);max-height:88vh;overflow:auto;background:var(--cream);border-radius:22px 22px 0 0;padding:16px 14px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -15px 40px #0002}
+pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;margin:0}
+.hidden{display:none!important}
+@media(min-width:700px){.app{margin-top:18px;margin-bottom:18px;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden}.bottomnav{bottom:18px;border-radius:0 0 26px 26px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="brandmark">S4K</div>
+    <div><strong>Story4Kids</strong><small id="headerSub">Admin-Produktion</small></div>
+    <div class="head-actions">
+      <button class="iconbtn hidden" id="refreshBtn" title="Aktualisieren">↻</button>
+      <button class="iconbtn hidden" id="logoutBtn" title="Abmelden">↪</button>
+    </div>
+  </div>
+</header>
+<main id="main"></main>
+<nav class="bottomnav hidden" id="bottomnav">
+  <button data-route="dashboard"><span>⌂</span>Aufträge</button>
+  <button data-route="production"><span>☰</span>15 Stories</button>
+  <button data-route="characters"><span>★</span>Figuren</button>
+  <button data-route="status"><span>✓</span>Status</button>
+</nav>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<script>
+const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
+const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
+
+const S={
+  session:null, requests:[], request:null, stories:[], characters:[], scenes:{}, variants:{}, readiness:null,
+  imageUrls:new Map(), currentStory:null
+};
+
+const $=s=>document.querySelector(s);
+const main=$('#main'), toastEl=$('#toast'), modal=$('#modal'), sheet=$('#sheet');
+
+function esc(v=''){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function statusLabel(s){return ({planned:'offen',approved:'freigegeben',generating:'wird erzeugt',ready:'fertig',needs_review:'prüfen',failed:'Fehler',cancelled:'abgebrochen',draft:'Entwurf',reference_ready:'Referenz prüfen',review:'Varianten prüfen',selected:'ausgewählt',candidate:'Variante',rejected:'verworfen'})[s]||s||'—'}
+function pillClass(s){return ['approved','ready','selected'].includes(s)?'ok':['failed','cancelled'].includes(s)?'red':['generating','reference_ready','review'].includes(s)?'blue':'warn'}
+function toast(msg,type=''){toastEl.textContent=msg;toastEl.className='toast show '+type;clearTimeout(window._tt);window._tt=setTimeout(()=>toastEl.className='toast',4200)}
+function busy(btn,on,label='Bitte warten …'){if(!btn)return; if(on){btn.dataset.old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spinner"></span>'+esc(label)}else{btn.disabled=false;btn.innerHTML=btn.dataset.old||btn.innerHTML}}
+function closeModal(){modal.classList.remove('open');sheet.innerHTML=''}
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+
+function saveSession(s){S.session=s;if(s)localStorage.setItem('s4k_session',JSON.stringify(s));else localStorage.removeItem('s4k_session')}
+function loadStoredSession(){try{const x=JSON.parse(localStorage.getItem('s4k_session')||'null');if(x?.access_token)S.session=x}catch{}}
+function jwtExp(token){try{return JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp||0}catch{return 0}}
+async function refreshSession(){
+  if(!S.session?.refresh_token)throw new Error('Keine Sitzung');
+  const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:PUB_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:S.session.refresh_token})});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.msg||d.message||'Sitzung abgelaufen');
+  saveSession(d);return d;
+}
+async function token(){
+  if(!S.session?.access_token)throw new Error('Nicht angemeldet');
+  if(jwtExp(S.session.access_token)*1000-Date.now()<90000)await refreshSession();
+  return S.session.access_token;
+}
+async function authFetch(url,opts={}){
+  let t=await token();
+  const headers={apikey:PUB_KEY,Authorization:'Bearer '+t,...(opts.headers||{})};
+  let r=await fetch(url,{...opts,headers});
+  if(r.status===401&&S.session?.refresh_token){await refreshSession();t=S.session.access_token;headers.Authorization='Bearer '+t;r=await fetch(url,{...opts,headers})}
+  return r;
+}
+async function login(email,password){
+  const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:PUB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.msg||d.message||d.error_description||'Login fehlgeschlagen');
+  saveSession(d);
+  const check=await rest('admin_access?select=user_id,is_active&is_active=eq.true&limit=1');
+  if(!check.length){saveSession(null);throw new Error('Dieser Benutzer hat keinen aktiven Story4Kids-Adminzugriff.')}
+  return d;
+}
+async function logout(){try{if(S.session)await authFetch(SB_URL+'/auth/v1/logout',{method:'POST'})}catch{}saveSession(null);location.hash='login';render()}
+async function changePassword(password){
+  const r=await authFetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.msg||d.message||'Passwort konnte nicht geändert werden');return d;
+}
+async function rest(path,opts={}){
+  const r=await authFetch(SB_URL+'/rest/v1/'+path,{...opts,headers:{Accept:'application/json',...(opts.body?{'Content-Type':'application/json'}:{}),...(opts.headers||{})}});
+  const txt=await r.text();let d=null;try{d=txt?JSON.parse(txt):null}catch{d=txt}
+  if(!r.ok)throw new Error((d&&d.message)||('Datenbankfehler '+r.status));return d;
+}
+async function invoke(name,body){
+  const r=await authFetch(SB_URL+'/functions/v1/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const txt=await r.text();let d={};try{d=txt?JSON.parse(txt):{}}catch{d={raw:txt}}
+  if(!r.ok){const e=new Error(d.message||d.error||('Function '+r.status));e.data=d;e.status=r.status;throw e}return d;
+}
+async function privateImage(path){
+  if(!path)return null;if(S.imageUrls.has(path))return S.imageUrls.get(path);
+  const clean=path.split('/').map(encodeURIComponent).join('/');
+  const r=await authFetch(SB_URL+'/storage/v1/object/authenticated/story-assets/'+clean);
+  if(!r.ok)throw new Error('Privates Bild konnte nicht geladen werden');
+  const u=URL.createObjectURL(await r.blob());S.imageUrls.set(path,u);return u;
+}
+
+async function loadRequests(){
+  S.requests=await rest('customer_requests?select=id,status,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at&order=submitted_at.desc&limit=50');
+  if(S.request){const x=S.requests.find(r=>r.id===S.request.id);if(x)S.request=x}
+}
+async function loadRequest(id){
+  const rows=await rest('customer_requests?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!rows.length)throw new Error('Auftrag nicht gefunden');
+  S.request=rows[0];
+  await Promise.all([loadStories(),loadCharacters()]);
+}
+async function loadStories(){if(!S.request)return;S.stories=await rest('customer_request_stories?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=position.asc')}
+async function loadCharacters(){if(!S.request)return;S.characters=await rest('customer_request_characters?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=created_at.asc')}
+async function loadScenes(storyId){S.scenes[storyId]=await rest('customer_request_story_scenes?select=*&request_story_id=eq.'+encodeURIComponent(storyId)+'&order=scene_index.asc');return S.scenes[storyId]}
+async function loadVariants(sceneId){S.variants[sceneId]=await rest('story_image_variants?select=*&scene_id=eq.'+encodeURIComponent(sceneId)+'&order=variant_index.asc');return S.variants[sceneId]}
+async function loadReadiness(){try{S.readiness=await invoke('story4kids-readiness',{})}catch(e){S.readiness={error:e.message}}}
+
+function route(){return (location.hash||'#login').slice(1).split('?')[0]}
+function query(){return new URLSearchParams((location.hash.split('?')[1]||''))}
+function go(r,params={}){const q=new URLSearchParams(params).toString();location.hash=r+(q?'?'+q:'')}
+function shell(on=true){$('#bottomnav').classList.toggle('hidden',!on);$('#refreshBtn').classList.toggle('hidden',!on);$('#logoutBtn').classList.toggle('hidden',!on)}
+
+function loginView(){
+  shell(false);$('#headerSub').textContent='Sicherer Admin-Login';
+  main.innerHTML=`<div class="hero">
+    <span class="pill ok">LIVE · Story4Kids Backend</span>
+    <h1>Admin-Produktion</h1>
+    <p>Hier bearbeitest du echte Aufträge, 15 Story-Ideen, Character Bible und Illustrationen.</p>
+  </div>
+  <div class="card">
+    <label>E-Mail</label><input id="email" type="email" autocomplete="email" value="yasar_kilic@gmx.at">
+    <label>Passwort</label><input id="password" type="password" autocomplete="current-password" placeholder="Dein Passwort">
+    <button class="btn" id="loginBtn">Anmelden</button>
+    <div class="rule warn">Beim ersten Login verwendest du das temporäre Passwort. Danach kannst du es unter „Status“ ändern.</div>
+  </div>`;
+  $('#loginBtn').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Anmelden …');await login($('#email').value.trim(),$('#password').value);await loadRequests();go('dashboard')}catch(err){toast(err.message,'err')}finally{busy(b,false)}};
+}
+
+function dashboardView(){
+  shell(true);$('#headerSub').textContent='Aufträge';
+  const n=S.requests.filter(x=>x.status==='new').length, prod=S.requests.filter(x=>['in_review','generating'].includes(x.status)).length,ready=S.requests.filter(x=>x.status==='ready').length;
+  main.innerHTML=`<h2>Dashboard</h2>
+  <div class="actions">
+    <div class="card"><div class="small">Neu</div><div class="metric">${n}</div></div>
+    <div class="card"><div class="small">In Produktion</div><div class="metric">${prod}</div></div>
+  </div>
+  <div class="card row"><div><div class="small">Bereit</div><div class="metric">${ready}</div></div><span class="pill">15 Storys pro Buch</span></div>
+  <div class="section-title">Aufträge</div>
+  <div id="requestList">${S.requests.length?S.requests.map(r=>`<a class="story" href="#request?id=${esc(r.id)}">
+    <div class="story-head"><div class="num">${esc((r.child_first_name||'?')[0])}</div><div style="flex:1"><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div>
+    <div class="desc">${esc(r.customer_name)} · ${esc(r.interests?.join?.(', ')||r.theme||'')}</div></div><span class="pill ${pillClass(r.status)}">${esc(statusLabel(r.status))}</span></div>
+  </a>`).join(''):'<div class="empty">Noch keine Aufträge.</div>'}</div>`;
+}
+
+function requestView(){
+  shell(true);$('#headerSub').textContent='Auftrag';
+  const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
+  const meta=r.metadata||{}, child=meta.child_profile||{}, app=meta.appearance||{}, prefs=meta.story_preferences||{};
+  const approved=S.stories.filter(x=>x.status==='approved').length,ready=S.stories.filter(x=>x.status==='ready').length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${esc(r.customer_email)}</div></div><span class="pill ${pillClass(r.status)}">${esc(statusLabel(r.status))}</span></div>
+  <div class="card"><div class="small">15-Story-Produktion</div><div class="progress"><span style="width:${Math.round(ready/15*100)}%"></span></div><div class="row mini"><span>${approved} freigegeben</span><span>${ready}/15 fertig</span></div></div>
+  <div class="section-title">Kind & Personalisierung</div>
+  <div class="card kv">
+    <b>Alter</b><span>${esc(r.child_age)} Jahre</span>
+    <b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span>
+    <b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span>
+    <b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span>
+    <b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span>
+    <b>Moral</b><span>${esc(r.moral_or_message||'—')}</span>
+  </div>
+  <div class="section-title">Produktion</div>
+  <button class="btn" onclick="go('production')">15 Story-Ideen bearbeiten</button>
+  <button class="btn secondary" onclick="go('characters')">Character Bible & Referenzen</button>
+  <button class="btn soft" onclick="showContract()">Story Contract ansehen</button>`;
+}
+
+window.showContract=function(){
+  const c=S.request?.metadata?.story_contract;
+  sheet.innerHTML=`<div class="row"><h2>Story Contract</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div>
+  ${c?`<div class="rule ok"><b>Feste Länge:</b> ${esc(c?.story_length?.target_words||800)} Wörter, ${esc(c?.story_length?.min_words||750)}–${esc(c?.story_length?.max_words||850)} erlaubt.</div>
+  <pre class="storytext">${esc(JSON.stringify(c,null,2))}</pre>`:'<div class="empty">Noch kein Story Contract gespeichert.</div>'}`;
+  modal.classList.add('open')
+}
+
+function productionView(){
+  shell(true);$('#headerSub').textContent='15 Stories';
+  if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
+  const ap=S.stories.filter(x=>x.status==='approved').length,rd=S.stories.filter(x=>x.status==='ready').length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">15 Story-Ideen</h2><div class="small">${esc(S.request.child_first_name)} · Ziel 800 Wörter</div></div><span class="pill">${S.stories.length}/15</span></div>
+  <div class="card"><div class="row"><b class="small">${ap} freigegeben</b><b class="small">${rd} fertig</b></div><div class="progress"><span style="width:${Math.round(rd/15*100)}%"></span></div></div>
+  ${S.stories.map(s=>`<a class="story" href="#story?id=${esc(s.id)}"><div class="story-head"><div class="num">${String(s.position).padStart(2,'0')}</div><div style="flex:1">
+   <div class="story-title">${esc(s.title)}</div><div class="desc">${esc(s.plan_item?.primary_setting||'')} · ${esc(s.category||'')}</div></div>
+   <span class="pill ${pillClass(s.status)}">${esc(statusLabel(s.status))}</span></div></a>`).join('')}`;
+}
+
+async function storyView(){
+  shell(true);const id=query().get('id'),s=S.stories.find(x=>x.id===id);S.currentStory=s;$('#headerSub').textContent='Story '+(s?.position||'');
+  if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
+  const p=s.plan_item||{}, moments=p.illustration_moments||[];
+  main.innerHTML=`<span class="pill ${pillClass(s.status)}">${esc(statusLabel(s.status))}</span>
+  <h2>${String(s.position).padStart(2,'0')} · ${esc(s.title)}</h2>
+  <div class="card kv">
+    <b>Ort</b><span>${esc(p.primary_setting||'—')}</span>
+    <b>Hook</b><span>${esc(p.hook||'—')}</span>
+    <b>Problem</b><span>${esc(p.central_problem||'—')}</span>
+    <b>Wendepunkt</b><span>${esc(p.emotional_turn||'—')}</span>
+    <b>Lösung</b><span>${esc(p.active_resolution||'—')}</span>
+    <b>Persönlich</b><span>${esc((p.personal_details_used||[]).join(', ')||'—')}</span>
+  </div>
+  <div class="section-title">Geplante Illustrationen</div>
+  ${moments.map((m,i)=>`<div class="card"><b>Bild ${i+1}</b><div class="desc">${esc(m.action||m.scene||'')}</div></div>`).join('')}
+  <div id="storyActions"></div>
+  <div id="storyOutput"></div>`;
+  renderStoryActions(s);
+  if(s.status==='ready'&&s.story_project_id)await loadStoryOutput(s);
+}
+function renderStoryActions(s){
+  let h='';
+  if(s.status==='planned'||s.status==='failed'){
+    h+=`<button class="btn ok" id="approveStory">Idee freigeben</button>`;
+    h+=`<button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
+  }else if(s.status==='approved'){
+    h+=`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`;
+    h+=`<div class="actions"><button class="btn secondary" id="replaceStory">Idee ersetzen</button><button class="btn danger" id="reopenStory">Freigabe zurücknehmen</button></div>`;
+  }else if(s.status==='generating'){
+    h+=`<div class="rule warn">Die Geschichte wird gerade erzeugt. Danach bitte aktualisieren.</div>`;
+  }else if(s.status==='ready'){
+    h+=`<button class="btn" id="openScenes">Illustrationen bearbeiten</button>`;
+  }
+  $('#storyActions').innerHTML=h;
+  if($('#approveStory'))$('#approveStory').onclick=()=>storyAction('approve',s);
+  if($('#reopenStory'))$('#reopenStory').onclick=()=>storyAction('reopen',s);
+  if($('#generateStory'))$('#generateStory').onclick=()=>generateStory(s);
+  if($('#replaceStory'))$('#replaceStory').onclick=()=>replaceStorySheet(s);
+  if($('#openScenes'))$('#openScenes').onclick=()=>go('scenes',{story:s.id});
+}
+async function storyAction(action,s){
+  const btn=event?.currentTarget;try{busy(btn,true);await invoke('manage-request-story-item',{request_id:S.request.id,position:s.position,action});await loadStories();toast(action==='approve'?'Idee freigegeben.':'Freigabe zurückgenommen.','ok');await storyView()}catch(e){toast(e.message,'err')}finally{busy(btn,false)}
+}
+function replaceStorySheet(s){
+  sheet.innerHTML=`<div class="row"><h2>Story ${s.position} ersetzen</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div>
+  <p class="small">Nur diese Story wird neu geplant. Die anderen 14 bleiben unverändert.</p>
+  <label>Optionaler Wunsch</label><textarea id="replaceHint" placeholder="z. B. lieber Wald, mehr Humor, mehr Flocki"></textarea>
+  <button class="btn" id="doReplace">Neue Idee erzeugen</button>`;
+  modal.classList.add('open');
+  $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('replace-request-story-item',{request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
+}
+async function generateStory(s){
+  const btn=event?.currentTarget;try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
+}
+async function loadStoryOutput(s){
+  const pages=await rest('story_pages?select=page_number,text_content,illustration_prompt&project_id=eq.'+encodeURIComponent(s.story_project_id)+'&order=page_number.asc');
+  const txt=pages.map(p=>p.text_content||'').filter(Boolean).join('\n\n');
+  const words=txt.trim()?txt.trim().split(/\s+/).length:0;
+  $('#storyOutput').innerHTML=`<div class="section-title">Fertige Geschichte</div><div class="wrap"><span class="pill ok">fertig</span><span class="pill">${words} Wörter</span><span class="pill blue">${pages.filter(p=>p.illustration_prompt?.trim()).length} Bildszenen</span></div>
+  <div class="card"><pre class="storytext">${esc(txt||'Noch kein Storytext gefunden.')}</pre></div>`;
+}
+
+async function charactersView(){
+  shell(true);$('#headerSub').textContent='Character Bible';
+  if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Character Bible</h2><div class="small">${esc(S.request.child_first_name)} · über alle 15 Storys</div></div><span class="pill">${S.characters.length} Figuren</span></div>
+  <div id="characterList"></div>
+  ${S.characters.length?'':'<button class="btn" id="materializeChars">Character Bible erstellen</button>'}`;
+  if(!S.characters.length){$('#materializeChars').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-character-bible',{request_id:S.request.id});await loadCharacters();toast('Character Bible erstellt.','ok');await charactersView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}}
+  await renderCharacters();
+}
+async function renderCharacters(){
+  const box=$('#characterList');if(!box)return;
+  if(!S.characters.length){box.innerHTML='<div class="empty">Noch keine Character Bible.</div>';return}
+  box.innerHTML='';
+  for(const c of S.characters){
+    const div=document.createElement('div');div.className='card';
+    const a=c.canon?.appearance||c.canon?.identity?.appearance||{};
+    div.innerHTML=`<div class="row"><div><h3>${esc(c.display_name)}</h3><div class="small">${esc(c.role)}</div></div><span class="pill ${pillClass(c.status)}">${esc(statusLabel(c.status))}</span></div>
+      <div class="desc">${esc(typeof a==='string'?a:[a.hair,a.eyes,a.distinctive_features,a.typical_clothing,a.description].filter(Boolean).join(' · '))}</div>
+      <div class="imagebox" id="img-${c.id}"><div class="loading">${c.reference_storage_path?'Referenz wird geladen …':'Noch kein Referenzbild'}</div></div>
+      <div id="ca-${c.id}"></div>`;
+    box.appendChild(div);
+    if(c.reference_storage_path){privateImage(c.reference_storage_path).then(u=>{const el=$('#img-'+c.id);if(el&&u)el.innerHTML=`<img alt="${esc(c.display_name)} Referenz" src="${u}">`}).catch(e=>{$('#img-'+c.id).innerHTML='<div class="loading">'+esc(e.message)+'</div>'})}
+    const ab=$('#ca-'+c.id);
+    if(c.status==='draft')ab.innerHTML=`<button class="btn" data-gen="${c.id}">Referenzbild erzeugen</button>`;
+    else if(c.status==='reference_ready')ab.innerHTML=`<div class="actions"><button class="btn ok" data-approve="${c.id}">Referenz freigeben</button><button class="btn secondary" data-gen="${c.id}" data-regen="1">Neu erzeugen</button></div>`;
+    else if(c.status==='approved')ab.innerHTML=`<div class="actions"><button class="btn secondary" data-gen="${c.id}" data-regen="1">Neu erzeugen</button><button class="btn danger" data-reopen="${c.id}">Freigabe öffnen</button></div>`;
+  }
+  document.querySelectorAll('[data-gen]').forEach(b=>b.onclick=()=>generateCharacter(b.dataset.gen,b.dataset.regen==='1',b));
+  document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>manageCharacter(b.dataset.approve,'approve',b));
+  document.querySelectorAll('[data-reopen]').forEach(b=>b.onclick=()=>manageCharacter(b.dataset.reopen,'reopen',b));
+}
+async function generateCharacter(id,regenerate,b){
+  try{busy(b,true,'Bild wird erzeugt …');await invoke('generate-character-reference',{character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+}
+async function manageCharacter(id,action,b){
+  try{busy(b,true);await invoke('manage-character-bible',{character_id:id,action});await loadCharacters();toast(action==='approve'?'Referenz freigegeben.':'Referenz wieder geöffnet.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
+}
+
+async function scenesView(){
+  shell(true);const storyId=query().get('story'),s=S.stories.find(x=>x.id===storyId);$('#headerSub').textContent='Illustrationen';
+  if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
+  let scenes=await loadScenes(storyId);
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Bildproduktion</h2><div class="small">Story ${s.position} · ${esc(s.title)}</div></div><span class="pill">${scenes.length} Szenen</span></div>
+  <div id="scenesList"></div>
+  ${scenes.length?'':'<button class="btn" id="materializeScenes">2–3 Bildszenen vorbereiten</button>'}`;
+  if(!scenes.length){$('#materializeScenes').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-story-scenes',{request_story_id:s.id});toast('Bildszenen vorbereitet.','ok');await scenesView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}};return}
+  await renderScenes(s,scenes);
+}
+async function renderScenes(story,scenes){
+  const root=$('#scenesList');root.innerHTML='';
+  for(const sc of scenes){
+    const v=await loadVariants(sc.id);
+    const card=document.createElement('div');card.className='card';
+    card.innerHTML=`<div class="row"><div><h3>Szene ${sc.scene_index}</h3><div class="small">${esc(sc.scene_plan?.setting||'')}</div></div><span class="pill ${pillClass(sc.status)}">${esc(statusLabel(sc.status))}</span></div>
+      <p class="desc">${esc(sc.scene_plan?.action||sc.scene_plan?.scene||'')}</p>
+      <div class="variants" id="variants-${sc.id}"></div>
+      <button class="btn ${v.length?'secondary':''}" data-vargen="${sc.id}" data-regen="${v.length?'1':'0'}">${v.length?'3 neue Varianten':'3 Bildvarianten erzeugen'}</button>`;
+    root.appendChild(card);
+    const vr=$('#variants-'+sc.id);
+    for(const x of v){
+      const d=document.createElement('div');d.className='variant '+(x.status==='selected'?'selected':'');d.innerHTML=`<div class="loading mini">Bild …</div>${x.status!=='selected'?`<button data-select="${x.id}">Verwenden</button>`:'<button disabled>✓ ausgewählt</button>'}`;vr.appendChild(d);
+      privateImage(x.storage_path).then(u=>{if(u)d.insertAdjacentHTML('afterbegin',`<img alt="Variante ${x.variant_index}" src="${u}">`);d.querySelector('.loading')?.remove()}).catch(()=>{d.querySelector('.loading').textContent='Bild nicht ladbar'});
+    }
+  }
+  document.querySelectorAll('[data-vargen]').forEach(b=>b.onclick=()=>generateVariants(b.dataset.vargen,b.dataset.regen==='1',b));
+  document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>selectVariant(b.dataset.select,b));
+}
+async function generateVariants(sceneId,regenerate,b){
+  try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('generate-story-image-variants',{scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+}
+async function selectVariant(id,b){
+  try{busy(b,true,'Auswählen …');await invoke('select-story-image-variant',{variant_id:id});toast('Bild ausgewählt.','ok');await scenesView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
+}
+
+async function statusView(){
+  shell(true);$('#headerSub').textContent='Systemstatus';if(!S.readiness)await loadReadiness();
+  const x=S.readiness||{}, f=x.test_fixture||{};
+  main.innerHTML=`<h2>Systemstatus</h2>
+  <div class="card">
+   ${statusLine('Angemeldet',!!S.session)}
+   ${statusLine('Admin-Zugriff',x.admin_access!==false)}
+   ${statusLine('OpenAI API-Key',!!x.openai_api_key_configured)}
+   ${statusLine('Zero Data Retention',!!x.openai_zdr_confirmed)}
+   ${statusLine('Testauftrag',!!f.present)}
+  </div>
+  <div class="card kv"><b>Story-Modell</b><span>${esc(x.story_model||'—')}</span><b>Bild-Modell</b><span>${esc(x.image_model||'—')}</span><b>Story-Slots</b><span>${esc(f.story_slots??'—')}/15</span><b>Character Bible</b><span>${esc(f.character_bible_entries??'—')}</span></div>
+  <div class="section-title">Passwort</div>
+  <div class="card"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div>`;
+  $('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}
+}
+function statusLine(name,ok){return `<div class="statusline"><b>${esc(name)}</b><span class="${ok?'yes':'no'}">${ok?'✓ bereit':'✕ fehlt'}</span></div>`}
+
+async function render(){
+  const r=route();
+  if(!S.session&&r!=='login'){go('login');return}
+  try{
+    if(r==='login')return loginView();
+    if(!S.requests.length)await loadRequests();
+    if(r==='dashboard')return dashboardView();
+    if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return requestView()}
+    if(!S.request&&S.requests.length)await loadRequest(S.requests[0].id);
+    if(r==='production'){await loadStories();return productionView()}
+    if(r==='story'){await loadStories();return storyView()}
+    if(r==='characters'){await loadCharacters();return charactersView()}
+    if(r==='scenes'){await loadStories();return scenesView()}
+    if(r==='status')return statusView();
+    go('dashboard');
+  }catch(e){main.innerHTML=`<div class="hero"><h2>Fehler</h2><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Neu laden</button></div>`;toast(e.message,'err')}
+}
+window.addEventListener('hashchange',render);
+document.querySelectorAll('[data-route]').forEach(b=>b.onclick=()=>go(b.dataset.route));
+$('#logoutBtn').onclick=logout;
+$('#refreshBtn').onclick=async()=>{try{await loadRequests();if(S.request)await loadRequest(S.request.id);S.readiness=null;await render();toast('Aktualisiert.','ok')}catch(e){toast(e.message,'err')}};
+
+loadStoredSession();
+if(!location.hash)location.hash=S.session?'dashboard':'login';
+render();
+</script>
+</body>
+</html>

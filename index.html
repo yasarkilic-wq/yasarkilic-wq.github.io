@@ -70,8 +70,8 @@ textarea{min-height:85px;resize:vertical}
 .variant.selected{border-color:var(--ok)}
 .variant img{width:100%;height:100%;object-fit:cover;display:block}
 .variant button{position:absolute;left:5px;right:5px;bottom:5px;border:0;border-radius:9px;background:#ffffffed;padding:7px 4px;font-size:10px;font-weight:850;color:var(--navy)}
-.bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#fffdf9ee;backdrop-filter:blur(15px);border-top:1px solid var(--line);padding:6px 3px max(7px,env(safe-area-inset-bottom));z-index:40}
-.bottomnav button{border:0;background:none;color:#606b74;font-size:9px;font-weight:800;padding:3px}.bottomnav span{display:block;font-size:18px;margin-bottom:2px}
+.bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(3,1fr);background:#fffdf9ee;backdrop-filter:blur(15px);border-top:1px solid var(--line);padding:6px 3px max(7px,env(safe-area-inset-bottom));z-index:40}
+.bottomnav button{border:0;background:none;color:#606b74;font-size:10px;font-weight:800;padding:4px}.bottomnav button.active{color:var(--navy)}.bottomnav span{display:block;font-size:19px;margin-bottom:2px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:74px;width:min(470px,calc(100% - 28px));z-index:100;border-radius:14px;padding:12px 13px;background:#1f3444;color:#fff;box-shadow:0 10px 30px #0003;font-size:12px;display:none}
 .toast.show{display:block}.toast.err{background:#8f4545}.toast.ok{background:#176b52}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid #ffffff55;border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px;margin-right:6px}
@@ -82,6 +82,18 @@ textarea{min-height:85px;resize:vertical}
 .sheet{width:min(520px,100%);max-height:88vh;overflow:auto;background:var(--cream);border-radius:22px 22px 0 0;padding:16px 14px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -15px 40px #0002}
 pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;margin:0}
 .hidden{display:none!important}
+
+.tabs{display:flex;gap:6px;overflow:auto;padding:2px 0 10px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tab{white-space:nowrap;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 11px;font-size:11px;font-weight:850}.tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.order-card{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px;margin-bottom:9px;box-shadow:var(--shadow)}
+.order-card .next{margin-top:10px;border-top:1px solid #eee;padding-top:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}.next b{font-size:11px;color:var(--navy)}
+.contact{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.contact span,.contact a{font-size:10px;background:#f2f5f7;color:#526574;border-radius:999px;padding:5px 8px;text-decoration:none}
+.workflow{display:flex;gap:4px;overflow:auto;margin:10px -2px 2px;padding:2px;scrollbar-width:none}.workflow::-webkit-scrollbar{display:none}.step{min-width:86px;padding:8px 7px;border-radius:12px;background:#f0f2f3;color:#6a747c;font-size:9px;font-weight:850;text-align:center}.step.done{background:#e7f4ee;color:var(--ok)}.step.now{background:var(--navy);color:#fff}.step.future{opacity:.6}
+.nextbox{background:linear-gradient(145deg,#173957,#285978);color:#fff;border-radius:18px;padding:14px;margin-bottom:10px}.nextbox h3{font-size:16px;margin:0 0 4px}.nextbox p{font-size:11px;opacity:.82;margin:0}.nextbox .btn{background:#fff;color:var(--navy);margin-top:11px}
+.story-quick{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px;margin-bottom:7px}.story-quick .actions{grid-template-columns:1fr auto}.story-quick .mini-btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:10px;padding:8px 10px;font-size:10px;font-weight:850}.story-quick .mini-btn.ok{background:#eaf6f1;color:var(--ok);border-color:#cbe6db}
+.checks{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.check{font-size:9px;border-radius:999px;padding:4px 7px;background:#eef4f6;color:#527080}.check.ok{background:#e7f4ee;color:var(--ok)}.check.warn{background:#fff0d4;color:#87580d}
+.print-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px;margin-bottom:9px}.print-card .btn{margin-top:10px}
+.sectionlink{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px;margin-bottom:8px}.sectionlink b{font-size:13px;color:var(--navy)}.sectionlink span{font-size:11px;color:var(--muted)}
+
 @media(min-width:700px){.app{margin-top:18px;margin-bottom:18px;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden}.bottomnav{bottom:18px;border-radius:0 0 26px 26px}}
 </style>
 </head>
@@ -100,9 +112,8 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <main id="main"></main>
 <nav class="bottomnav hidden" id="bottomnav">
   <button data-route="dashboard"><span>⌂</span>Aufträge</button>
-  <button data-route="production"><span>☰</span>15 Stories</button>
-  <button data-route="characters"><span>★</span>Figuren</button>
-  <button data-route="status"><span>✓</span>Status</button>
+  <button data-route="print"><span>▣</span>Druck</button>
+  <button data-route="settings"><span>⚙</span>Einstellungen</button>
 </nav>
 </div>
 <div class="toast" id="toast"></div>
@@ -122,6 +133,24 @@ const main=$('#main'), toastEl=$('#toast'), modal=$('#modal'), sheet=$('#sheet')
 function esc(v=''){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 function statusLabel(s){return ({planned:'offen',approved:'freigegeben',generating:'wird erzeugt',ready:'fertig',needs_review:'prüfen',failed:'Fehler',cancelled:'abgebrochen',draft:'Entwurf',reference_ready:'Referenz prüfen',review:'Varianten prüfen',selected:'ausgewählt',candidate:'Variante',rejected:'verworfen'})[s]||s||'—'}
 function pillClass(s){return ['approved','ready','selected'].includes(s)?'ok':['failed','cancelled'].includes(s)?'red':['generating','reference_ready','review'].includes(s)?'blue':'warn'}
+function prodStage(r){
+  const m=r?.metadata||{}; if(m.production_stage)return m.production_stage;
+  if(r?.status==='completed')return 'printed'; if(r?.status==='ready')return 'book_review'; if(r?.status==='generating')return 'ai'; if(r?.status==='in_review')return 'preparation'; return 'new';
+}
+const STAGES=['new','preparation','ai','book_review','print_ready','printing','printed'];
+function stageLabel(s){return ({new:'Neu',preparation:'Vorbereitung',ai:'KI-Erstellung',book_review:'Buchprüfung',print_ready:'Druckbereit',printing:'Im Druck',printed:'Gedruckt'})[s]||s}
+function stageClass(s){return ['printed','print_ready'].includes(s)?'ok':s==='printing'?'blue':s==='book_review'?'warn':''}
+function contactInfo(r){
+  const m=r?.metadata||{},c=m.contact||{};
+  const instagram=c.instagram||c.instagram_name||m.instagram||m.instagram_name||m.instagram_handle||'';
+  const preferred=c.preferred||c.preferred_channel||m.preferred_contact||'';
+  return {email:r?.customer_email||c.email||'',phone:r?.customer_phone||c.phone||'',instagram,preferred};
+}
+function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram.replace(/^@/,''))}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
+function nextAction(r){const s=prodStage(r);return ({new:'Auftrag prüfen',preparation:'Story-Ideen freigeben',ai:'KI-Erstellung prüfen',book_review:'Buch prüfen',print_ready:'Zum Druck geben',printing:'Druckstatus prüfen',printed:'Abgeschlossen'})[s]||'Öffnen'}
+function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
+function workflowHtml(r){const cur=stageIndex(prodStage(r));return `<div class="workflow">${STAGES.map((s,i)=>`<div class="step ${i<cur?'done':i===cur?'now':'future'}">${i<cur?'✓ ':''}${stageLabel(s)}</div>`).join('')}</div>`}
+
 function toast(msg,type=''){toastEl.textContent=msg;toastEl.className='toast show '+type;clearTimeout(window._tt);window._tt=setTimeout(()=>toastEl.className='toast',4200)}
 function busy(btn,on,label='Bitte warten …'){if(!btn)return; if(on){btn.dataset.old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spinner"></span>'+esc(label)}else{btn.disabled=false;btn.innerHTML=btn.dataset.old||btn.innerHTML}}
 function closeModal(){modal.classList.remove('open');sheet.innerHTML=''}
@@ -193,6 +222,15 @@ async function loadCharacters(){if(!S.request)return;S.characters=await rest('cu
 async function loadScenes(storyId){S.scenes[storyId]=await rest('customer_request_story_scenes?select=*&request_story_id=eq.'+encodeURIComponent(storyId)+'&order=scene_index.asc');return S.scenes[storyId]}
 async function loadVariants(sceneId){S.variants[sceneId]=await rest('story_image_variants?select=*&scene_id=eq.'+encodeURIComponent(sceneId)+'&order=variant_index.asc');return S.variants[sceneId]}
 async function loadReadiness(){try{S.readiness=await invoke('story4kids-readiness',{})}catch(e){S.readiness={error:e.message}}}
+async function updateProductionStage(requestId,stage){
+  const r=S.requests.find(x=>x.id===requestId)||S.request;if(!r)throw new Error('Auftrag nicht gefunden');
+  const metadata={...(r.metadata||{}),production_stage:stage,production_stage_updated_at:new Date().toISOString()};
+  if(stage==='printed')metadata.printed_at=new Date().toISOString();
+  await rest('customer_requests?id=eq.'+encodeURIComponent(requestId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({metadata})});
+  await loadRequests();if(S.request?.id===requestId)await loadRequest(requestId);
+}
+function activeNav(name){document.querySelectorAll('[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===name))}
+
 
 function route(){return (location.hash||'#login').slice(1).split('?')[0]}
 function query(){return new URLSearchParams((location.hash.split('?')[1]||''))}
@@ -204,40 +242,57 @@ function loginView(){
   main.innerHTML=`<div class="hero">
     <span class="pill ok">LIVE · Story4Kids Backend</span>
     <h1>Admin-Produktion</h1>
-    <p>Hier bearbeitest du echte Aufträge, 15 Story-Ideen, Character Bible und Illustrationen.</p>
+    <p>Ein Auftrag nach dem anderen – von der Kundenanfrage bis zum gedruckten Buch.</p>
   </div>
   <div class="card">
     <label>E-Mail</label><input id="email" type="email" autocomplete="email" value="yasar_kilic@gmx.at">
     <label>Passwort</label><input id="password" type="password" autocomplete="current-password" placeholder="Dein Passwort">
     <button class="btn" id="loginBtn">Anmelden</button>
-    <div class="rule warn">Beim ersten Login verwendest du das temporäre Passwort. Danach kannst du es unter „Status“ ändern.</div>
+    <div class="rule warn">Beim ersten Login verwendest du das temporäre Passwort. Danach kannst du es unter „Einstellungen“ ändern.</div>
   </div>`;
   $('#loginBtn').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Anmelden …');await login($('#email').value.trim(),$('#password').value);await loadRequests();go('dashboard')}catch(err){toast(err.message,'err')}finally{busy(b,false)}};
 }
 
 function dashboardView(){
-  shell(true);$('#headerSub').textContent='Aufträge';
-  const n=S.requests.filter(x=>x.status==='new').length, prod=S.requests.filter(x=>['in_review','generating'].includes(x.status)).length,ready=S.requests.filter(x=>x.status==='ready').length;
-  main.innerHTML=`<h2>Dashboard</h2>
-  <div class="actions">
-    <div class="card"><div class="small">Neu</div><div class="metric">${n}</div></div>
-    <div class="card"><div class="small">In Produktion</div><div class="metric">${prod}</div></div>
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Aufträge';
+  const filter=query().get('filter')||'open';
+  const groups={open:['new','preparation'],book:['ai','book_review'],print:['print_ready','printing'],done:['printed']};
+  const visible=S.requests.filter(r=>filter==='all'||(groups[filter]||[]).includes(prodStage(r)));
+  const cnt=k=>S.requests.filter(r=>(groups[k]||[]).includes(prodStage(r))).length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Aufträge</h2><div class="small">Jeder Kunde bleibt komplett in seinem Auftrag.</div></div><span class="pill">${S.requests.length}</span></div>
+  <div class="tabs">
+   <button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${cnt('open')}</button>
+   <button class="tab ${filter==='book'?'active':''}" data-filter="book">Bucharbeit ${cnt('book')}</button>
+   <button class="tab ${filter==='print'?'active':''}" data-filter="print">Druck ${cnt('print')}</button>
+   <button class="tab ${filter==='done'?'active':''}" data-filter="done">Fertig ${cnt('done')}</button>
+   <button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle</button>
   </div>
-  <div class="card row"><div><div class="small">Bereit</div><div class="metric">${ready}</div></div><span class="pill">15 Storys pro Buch</span></div>
-  <div class="section-title">Aufträge</div>
-  <div id="requestList">${S.requests.length?S.requests.map(r=>`<a class="story" href="#request?id=${esc(r.id)}">
-    <div class="story-head"><div class="num">${esc((r.child_first_name||'?')[0])}</div><div style="flex:1"><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div>
-    <div class="desc">${esc(r.customer_name)} · ${esc(r.interests?.join?.(', ')||r.theme||'')}</div></div><span class="pill ${pillClass(r.status)}">${esc(statusLabel(r.status))}</span></div>
-  </a>`).join(''):'<div class="empty">Noch keine Aufträge.</div>'}</div>`;
+  <div id="requestList">${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}">
+    <div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div>
+    <div class="contact">${contactHtml(r)}</div>
+    <div class="next"><b>→ ${esc(nextAction(r))}</b><span class="mini">Auftrag öffnen</span></div>
+  </a>`).join(''):'<div class="empty">In diesem Bereich gibt es gerade keine Aufträge.</div>'}</div>`;
+  document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>go('dashboard',{filter:b.dataset.filter}));
 }
 
 function requestView(){
-  shell(true);$('#headerSub').textContent='Auftrag';
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Auftrag';
   const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
-  const meta=r.metadata||{}, child=meta.child_profile||{}, app=meta.appearance||{}, prefs=meta.story_preferences||{};
-  const approved=S.stories.filter(x=>x.status==='approved').length,ready=S.stories.filter(x=>x.status==='ready').length;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${esc(r.customer_email)}</div></div><span class="pill ${pillClass(r.status)}">${esc(statusLabel(r.status))}</span></div>
-  <div class="card"><div class="small">15-Story-Produktion</div><div class="progress"><span style="width:${Math.round(ready/15*100)}%"></span></div><div class="row mini"><span>${approved} freigegeben</span><span>${ready}/15 fertig</span></div></div>
+  const meta=r.metadata||{}, child=meta.child_profile||{}, app=meta.appearance||{};
+  const approved=S.stories.filter(x=>x.status==='approved'||x.approved_at).length,ready=S.stories.filter(x=>x.status==='ready').length;
+  const stage=prodStage(r),next=nextAction(r);
+  let nextButton='';
+  if(stage==='new')nextButton=`<button class="btn" id="startPrep">Auftrag geprüft – Storyplanung öffnen</button>`;
+  else if(stage==='preparation')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">15 Story-Ideen prüfen</button>`;
+  else if(stage==='ai')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Geschichten & Fehler prüfen</button>`;
+  else if(stage==='book_review')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Buchprüfung öffnen</button>`;
+  else if(stage==='print_ready')nextButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
+  else if(stage==='printing')nextButton=`<button class="btn" onclick="go('print')">Druckstatus öffnen</button>`;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">Auftrag von ${esc(r.customer_name)}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div>
+  ${workflowHtml(r)}
+  <div class="nextbox"><h3>Nächster Schritt: ${esc(next)}</h3><p>Du arbeitest immer nur innerhalb dieses einen Kundenauftrags.</p>${nextButton}</div>
+  <div class="section-title">Kontakt</div>
+  <div class="card"><div class="contact">${contactHtml(r)}</div><div class="desc" style="margin-top:8px">Instagram, Telefon und bevorzugter Kontakt werden künftig direkt aus dem Kundenformular übernommen.</div></div>
   <div class="section-title">Kind & Personalisierung</div>
   <div class="card kv">
     <b>Alter</b><span>${esc(r.child_age)} Jahre</span>
@@ -247,10 +302,11 @@ function requestView(){
     <b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span>
     <b>Moral</b><span>${esc(r.moral_or_message||'—')}</span>
   </div>
-  <div class="section-title">Produktion</div>
-  <button class="btn" onclick="go('production')">15 Story-Ideen bearbeiten</button>
-  <button class="btn secondary" onclick="go('characters')">Character Bible & Referenzen</button>
+  <div class="section-title">Dieser Auftrag</div>
+  <a class="sectionlink" href="#production?id=${esc(r.id)}"><div><b>Story-Plan & Geschichten</b><br><span>${approved}/15 Ideen freigegeben · ${ready}/15 Geschichten fertig</span></div><strong>›</strong></a>
+  <a class="sectionlink" href="#characters?id=${esc(r.id)}"><div><b>Figuren & Referenzen</b><br><span>${S.characters.length} Figuren in diesem Auftrag</span></div><strong>›</strong></a>
   <button class="btn soft" onclick="showContract()">Story Contract ansehen</button>`;
+  if($('#startPrep'))$('#startPrep').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(r.id,'preparation');toast('Auftrag ist jetzt in Vorbereitung.','ok');go('production',{id:r.id})}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 
 window.showContract=function(){
@@ -262,15 +318,22 @@ window.showContract=function(){
 }
 
 function productionView(){
-  shell(true);$('#headerSub').textContent='15 Stories';
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Story-Freigabe';
   if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  const ap=S.stories.filter(x=>x.status==='approved').length,rd=S.stories.filter(x=>x.status==='ready').length;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">15 Story-Ideen</h2><div class="small">${esc(S.request.child_first_name)} · Ziel 800 Wörter</div></div><span class="pill">${S.stories.length}/15</span></div>
-  <div class="card"><div class="row"><b class="small">${ap} freigegeben</b><b class="small">${rd} fertig</b></div><div class="progress"><span style="width:${Math.round(rd/15*100)}%"></span></div></div>
-  ${S.stories.map(s=>`<a class="story" href="#story?id=${esc(s.id)}"><div class="story-head"><div class="num">${String(s.position).padStart(2,'0')}</div><div style="flex:1">
-   <div class="story-title">${esc(s.title)}</div><div class="desc">${esc(s.plan_item?.primary_setting||'')} · ${esc(s.category||'')}</div></div>
-   <span class="pill ${pillClass(s.status)}">${esc(statusLabel(s.status))}</span></div></a>`).join('')}`;
+  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.status==='approved'||x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Story-Plan</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">${S.stories.length}/15</span></div>
+  <div class="card"><div class="row"><div><b style="font-size:13px">Schnellfreigabe</b><div class="desc">Du musst nicht jede Story einzeln öffnen. Titel, Problem und Ort reichen für die erste Freigabe.</div></div></div>
+  <div class="checks"><span class="check ${S.stories.length===15?'ok':'warn'}">${S.stories.length}/15 geplant</span><span class="check ${fail?'warn':'ok'}">${fail?fail+' Fehler':'keine Generierungsfehler'}</span><span class="check">${rd}/15 fertig</span></div>
+  ${planned?'<button class="btn ok" id="approveAll">Alle offenen Story-Ideen freigeben</button>':''}</div>
+  <div id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div>
+    <div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut erzeugen</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details / ändern</button></div></div>`}).join('')}</div>`;
+  if($('#approveAll'))$('#approveAll').onclick=approveAllPlanned;
+  document.querySelectorAll('[data-oneapprove]').forEach(b=>b.onclick=()=>approveOneQuick(Number(b.dataset.oneapprove),b));
+  document.querySelectorAll('[data-openstory]').forEach(b=>b.onclick=()=>go('story',{id:b.dataset.openstory,request:S.request.id}));
+  document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>{const st=S.stories.find(x=>x.id===b.dataset.retry);if(st)generateStory(st,b)});
 }
+async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('manage-request-story-item',{request_id:S.request.id,position,action:'approve'});await loadStories();toast('Story-Idee freigegeben.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();if(prodStage(S.request)==='preparation')await updateProductionStage(S.request.id,'ai');toast('Alle offenen Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
 
 async function storyView(){
   shell(true);const id=query().get('id'),s=S.stories.find(x=>x.id===id);S.currentStory=s;$('#headerSub').textContent='Story '+(s?.position||'');
@@ -290,31 +353,32 @@ async function storyView(){
   ${moments.map((m,i)=>`<div class="card"><b>Bild ${i+1}</b><div class="desc">${esc(m.action||m.scene||'')}</div></div>`).join('')}
   <div id="storyActions"></div>
   <div id="storyOutput"></div>`;
+  if(!S.readiness)await loadReadiness();
   renderStoryActions(s);
   if(s.status==='ready'&&s.story_project_id)await loadStoryOutput(s);
 }
 function renderStoryActions(s){
-  let h='';
-  if(s.status==='planned'||s.status==='failed'){
-    h+=`<button class="btn ok" id="approveStory">Idee freigeben</button>`;
-    h+=`<button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
+  let h='',aiReady=!!S.readiness?.openai_api_key_configured&&!!S.readiness?.openai_zdr_confirmed;
+  if(s.status==='planned'){
+    h+=`<button class="btn ok" id="approveStory">Idee freigeben</button><button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
+  }else if(s.status==='failed'&&s.approved_at){
+    h+=`<div class="rule red"><b>KI-Erstellung fehlgeschlagen.</b><br>${esc(s.generation_error?.provider?.error||'Bitte Systemstatus prüfen.')}</div>`;
+    h+=aiReady?`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> OpenAI API-Key und ZDR müssen bereit sein, bevor du erneut startest.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
+    h+=`<button class="btn secondary" id="replaceStory">Story-Idee ändern</button>`;
   }else if(s.status==='approved'){
-    h+=`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`;
+    h+=aiReady?`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Sobald OpenAI bereit ist, wird dieser Knopf freigeschaltet.</div><button class="btn" disabled>800-Wörter-Geschichte erzeugen</button>`;
     h+=`<div class="actions"><button class="btn secondary" id="replaceStory">Idee ersetzen</button><button class="btn danger" id="reopenStory">Freigabe zurücknehmen</button></div>`;
-  }else if(s.status==='generating'){
-    h+=`<div class="rule warn">Die Geschichte wird gerade erzeugt. Danach bitte aktualisieren.</div>`;
-  }else if(s.status==='ready'){
-    h+=`<button class="btn" id="openScenes">Illustrationen bearbeiten</button>`;
-  }
+  }else if(s.status==='generating')h+=`<div class="rule warn">Die Geschichte wird gerade erzeugt. Danach bitte aktualisieren.</div>`;
+  else if(s.status==='ready')h+=`<button class="btn" id="openScenes">Illustrationen bearbeiten</button>`;
   $('#storyActions').innerHTML=h;
   if($('#approveStory'))$('#approveStory').onclick=()=>storyAction('approve',s);
   if($('#reopenStory'))$('#reopenStory').onclick=()=>storyAction('reopen',s);
-  if($('#generateStory'))$('#generateStory').onclick=()=>generateStory(s);
+  if($('#generateStory'))$('#generateStory').onclick=e=>generateStory(s,e.currentTarget);
   if($('#replaceStory'))$('#replaceStory').onclick=()=>replaceStorySheet(s);
-  if($('#openScenes'))$('#openScenes').onclick=()=>go('scenes',{story:s.id});
+  if($('#openScenes'))$('#openScenes').onclick=()=>go('scenes',{story:s.id,request:S.request.id});
 }
 async function storyAction(action,s){
-  const btn=event?.currentTarget;try{busy(btn,true);await invoke('manage-request-story-item',{request_id:S.request.id,position:s.position,action});await loadStories();toast(action==='approve'?'Idee freigegeben.':'Freigabe zurückgenommen.','ok');await storyView()}catch(e){toast(e.message,'err')}finally{busy(btn,false)}
+  const btn=null;try{busy(btn,true);await invoke('manage-request-story-item',{request_id:S.request.id,position:s.position,action});await loadStories();toast(action==='approve'?'Idee freigegeben.':'Freigabe zurückgenommen.','ok');await storyView()}catch(e){toast(e.message,'err')}finally{busy(btn,false)}
 }
 function replaceStorySheet(s){
   sheet.innerHTML=`<div class="row"><h2>Story ${s.position} ersetzen</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div>
@@ -324,8 +388,7 @@ function replaceStorySheet(s){
   modal.classList.add('open');
   $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('replace-request-story-item',{request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
-async function generateStory(s){
-  const btn=event?.currentTarget;try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
+async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
 }
 async function loadStoryOutput(s){
   const pages=await rest('story_pages?select=page_number,text_content,illustration_prompt&project_id=eq.'+encodeURIComponent(s.story_project_id)+'&order=page_number.asc');
@@ -336,7 +399,7 @@ async function loadStoryOutput(s){
 }
 
 async function charactersView(){
-  shell(true);$('#headerSub').textContent='Character Bible';
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Character Bible';
   if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
   main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Character Bible</h2><div class="small">${esc(S.request.child_first_name)} · über alle 15 Storys</div></div><span class="pill">${S.characters.length} Figuren</span></div>
   <div id="characterList"></div>
@@ -374,7 +437,7 @@ async function manageCharacter(id,action,b){
 }
 
 async function scenesView(){
-  shell(true);const storyId=query().get('story'),s=S.stories.find(x=>x.id===storyId);$('#headerSub').textContent='Illustrationen';
+  shell(true);activeNav('dashboard');const storyId=query().get('story'),s=S.stories.find(x=>x.id===storyId);$('#headerSub').textContent='Illustrationen';
   if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
   let scenes=await loadScenes(storyId);
   main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Bildproduktion</h2><div class="small">Story ${s.position} · ${esc(s.title)}</div></div><span class="pill">${scenes.length} Szenen</span></div>
@@ -409,20 +472,25 @@ async function selectVariant(id,b){
   try{busy(b,true,'Auswählen …');await invoke('select-story-image-variant',{variant_id:id});toast('Bild ausgewählt.','ok');await scenesView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
 }
 
-async function statusView(){
-  shell(true);$('#headerSub').textContent='Systemstatus';if(!S.readiness)await loadReadiness();
+function printView(){
+  shell(true);activeNav('print');$('#headerSub').textContent='Druck';
+  const items=S.requests.filter(r=>['print_ready','printing','printed'].includes(prodStage(r)));
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck</h2><div class="small">Hier sind nur Bücher, die wirklich beim Druckprozess sind.</div></div><span class="pill">${items.length}</span></div>
+  ${items.length?items.map(r=>{const s=prodStage(r);return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.customer_name)}</div><div class="contact">${contactHtml(r)}</div></div><span class="pill ${stageClass(s)}">${stageLabel(s)}</span></div>
+  ${s==='print_ready'?`<button class="btn" data-stage="printing" data-rid="${r.id}">Als „Im Druck“ markieren</button>`:s==='printing'?`<button class="btn ok" data-stage="printed" data-rid="${r.id}">✓ Gedruckt – Auftrag abschließen</button>`:''}<button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></div>`}).join(''):'<div class="empty">Noch kein Buch ist im Druckbereich.</div>'}`;
+  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.rid,b.dataset.stage);toast('Druckstatus aktualisiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>go('request',{id:b.dataset.openreq}));
+}
+async function settingsView(){
+  shell(true);activeNav('settings');$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
   const x=S.readiness||{}, f=x.test_fixture||{};
-  main.innerHTML=`<h2>Systemstatus</h2>
-  <div class="card">
-   ${statusLine('Angemeldet',!!S.session)}
-   ${statusLine('Admin-Zugriff',x.admin_access!==false)}
-   ${statusLine('OpenAI API-Key',!!x.openai_api_key_configured)}
-   ${statusLine('Zero Data Retention',!!x.openai_zdr_confirmed)}
-   ${statusLine('Testauftrag',!!f.present)}
+  main.innerHTML=`<h2>Einstellungen</h2>
+  <div class="section-title">KI & System</div><div class="card">
+   ${statusLine('Angemeldet',!!S.session)}${statusLine('Admin-Zugriff',x.admin_access!==false)}${statusLine('OpenAI API-Key',!!x.openai_api_key_configured)}${statusLine('Zero Data Retention',!!x.openai_zdr_confirmed)}
   </div>
-  <div class="card kv"><b>Story-Modell</b><span>${esc(x.story_model||'—')}</span><b>Bild-Modell</b><span>${esc(x.image_model||'—')}</span><b>Story-Slots</b><span>${esc(f.story_slots??'—')}/15</span><b>Character Bible</b><span>${esc(f.character_bible_entries??'—')}</span></div>
-  <div class="section-title">Passwort</div>
-  <div class="card"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div>`;
+  ${!x.openai_api_key_configured?'<div class="rule warn"><b>KI-Erstellung ist derzeit gesperrt.</b><br>Der OpenAI API-Key fehlt noch. Story-Freigaben funktionieren trotzdem.</div>':''}
+  <div class="card kv"><b>Story-Modell</b><span>${esc(x.story_model||'—')}</span><b>Bild-Modell</b><span>${esc(x.image_model||'—')}</span><b>Testauftrag</b><span>${f.present?'vorhanden':'—'}</span></div>
+  <div class="section-title">Passwort</div><div class="card"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div>`;
   $('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}
 }
 function statusLine(name,ok){return `<div class="statusline"><b>${esc(name)}</b><span class="${ok?'yes':'no'}">${ok?'✓ bereit':'✕ fehlt'}</span></div>`}
@@ -434,13 +502,15 @@ async function render(){
     if(r==='login')return loginView();
     if(!S.requests.length)await loadRequests();
     if(r==='dashboard')return dashboardView();
+    if(r==='print')return printView();
+    if(r==='settings')return settingsView();
     if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return requestView()}
     if(!S.request&&S.requests.length)await loadRequest(S.requests[0].id);
-    if(r==='production'){await loadStories();return productionView()}
-    if(r==='story'){await loadStories();return storyView()}
-    if(r==='characters'){await loadCharacters();return charactersView()}
-    if(r==='scenes'){await loadStories();return scenesView()}
-    if(r==='status')return statusView();
+    if(r==='production'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return productionView()}
+    if(r==='story'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return storyView()}
+    if(r==='characters'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadCharacters();return charactersView()}
+    if(r==='scenes'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return scenesView()}
+    if(r==='status')return settingsView();
     go('dashboard');
   }catch(e){main.innerHTML=`<div class="hero"><h2>Fehler</h2><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Neu laden</button></div>`;toast(e.message,'err')}
 }

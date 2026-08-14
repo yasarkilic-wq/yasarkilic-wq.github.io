@@ -161,7 +161,7 @@ function contactInfo(r){
 }
 function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
 function isDemo(r){return r?.metadata?.demo_workflow===true||String(r?.metadata?.demo_workflow||'')==='true'}
-function nextAction(r){const s=prodStage(r);if(s==='story_generation'&&r?.status==='generating')return 'Geschichten werden erstellt';return ({new:'Auftrag prüfen',story_plan:'Story-Ideen freigeben',story_generation:'Geschichten erstellen',characters:'Figuren festlegen',illustrations:'Illustrationen erstellen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
+function nextAction(r){const s=prodStage(r),running=r?.status==='generating';if(running&&s==='story_plan')return 'Story-Ideen werden erstellt';if(running&&s==='story_generation')return 'Geschichten werden erstellt';if(running&&s==='characters')return 'Figuren werden erstellt';if(running&&s==='illustrations')return 'Illustrationen werden erstellt';if(s==='book_review'&&!r?.review_pdf_storage_path)return 'Review-PDF wird erstellt';return ({new:'Auftrag prüfen & Buch starten',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
 function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
 
@@ -402,6 +402,13 @@ function requestView(){
   <details class="overview-card"><summary><div class="row"><div><b>Figuren & Bilder</b><div class="desc">${esc(charSummary)} · ${esc(imageSummary)}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="actions"><button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren</button><button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder</button></div></div></details>
   <details class="overview-card"><summary><div class="row"><div><b>Fertiges Buch</b><div class="desc">${r.review_pdf_storage_path?'Review-PDF vorhanden':'Noch nicht erstellt'}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Buchbereich öffnen</button></div></details>`;
   if($('#prepareOrder'))$('#prepareOrder').onclick=e=>prepareRealOrder(e.currentTarget);
+  clearTimeout(window._requestLiveTimer);
+  if(r.status==='generating'&&['story_plan','story_generation','characters','illustrations','book_review'].includes(prodStage(r))){
+    window._requestLiveTimer=setTimeout(async()=>{
+      if(route()!=='request'||S.request?.id!==r.id)return;
+      try{await loadRequest(r.id);await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);requestView()}catch(e){}
+    },8000);
+  }
 }
 async function prepareRealOrder(btn){
   try{
@@ -415,11 +422,11 @@ async function prepareRealOrder(btn){
     if(!S.readiness?.ai_production_ready){
       toast('OpenAI API-Key fehlt noch.','err');await loadRequest(S.request.id);requestView();return;
     }
-    if(!S.request.metadata?.story_plan){await invoke('story4kids-private-plan-fast',{request_id:S.request.id})}
-    await invoke('materialize-request-stories',{request_id:S.request.id});
+    const d=await invoke('story4kids-full-pipeline',{action:'start',request_id:S.request.id});
     await loadRequest(S.request.id);
-    await updateProductionStage(S.request.id,'story_plan');
-    toast('15 Story-Ideen sind vorbereitet.','ok');go('production',{id:S.request.id});
+    await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);
+    toast(d.already_running?'Die vollständige Buchproduktion läuft bereits serverseitig.':'Buchproduktion gestartet: Ideen → Geschichten → Figuren → Bilder → Review-PDF.','ok');
+    requestView();
   }catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadRequest(S.request.id);requestView()}finally{busy(btn,false)}
 }
 window.showContract=function(){

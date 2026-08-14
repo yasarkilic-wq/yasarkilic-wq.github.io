@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.2-2026-08-15-cover-pdf-auto';
+const APP_VERSION='workflow-v5.3-2026-08-15-quota-pause-status';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -163,7 +163,7 @@ function contactInfo(r){
 }
 function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
 function isDemo(r){return r?.metadata?.demo_workflow===true||String(r?.metadata?.demo_workflow||'')==='true'}
-function nextAction(r){const s=prodStage(r),running=r?.status==='generating';if(running&&s==='story_plan')return 'Story-Ideen werden erstellt';if(running&&s==='story_generation')return 'Geschichten werden erstellt';if(running&&s==='characters')return 'Figuren werden erstellt';if(running&&s==='illustrations')return 'Illustrationen werden erstellt';if(s==='book_review'&&!r?.review_pdf_storage_path)return 'Review-PDF wird erstellt';return ({new:'Auftrag prüfen & Buch starten',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
+function nextAction(r){const s=prodStage(r),running=r?.status==='generating',quota=r?.metadata?.quota_pause;if(quota?.active)return 'KI-Guthaben leer · automatisch pausiert';if(running&&s==='story_plan')return 'Story-Ideen werden erstellt';if(running&&s==='story_generation')return 'Geschichten werden erstellt';if(running&&s==='characters')return 'Figuren werden erstellt';if(running&&s==='illustrations')return 'Illustrationen werden erstellt';if(s==='book_review'&&!r?.review_pdf_storage_path)return 'Review-PDF wird erstellt';return ({new:'Auftrag prüfen & Buch starten',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
 function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
 
@@ -401,7 +401,12 @@ function requestView(){
       taskTitle='Figuren prüfen';taskText=`${charApproved}/${charTotal||'–'} Figuren fertig. Nur bei einer gewünschten Korrektur öffnen.`;taskButton=`<button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;
     }
   }else if(stage==='illustrations'){
-    if(r.status==='generating'){
+    if(meta.quota_pause?.active){
+      const q=meta.quota_pause;
+      taskTitle='KI-Guthaben leer – Produktion pausiert';
+      taskText=`${q.processed_scenes??selected}/${q.total_scenes??sceneTotal??'–'} Bilder fertig. Deine fertige Arbeit bleibt erhalten. Der Server versucht alle 15 Minuten automatisch weiterzumachen, sobald OpenAI wieder Guthaben akzeptiert.`;
+      taskButton=`<button class="btn secondary" onclick="go('settings')">KI & Budget öffnen</button>`;
+    }else if(r.status==='generating'){
       taskTitle='Illustrationen werden erstellt';taskText=`${selected}/${sceneTotal||'–'} Bildszenen automatisch erstellt und ausgewählt. Keine Aktion nötig.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Fortschritt ansehen</button>`;
     }else{
       taskTitle='Illustrationen prüfen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Nur fehlerhafte oder gewünschte Szenen einzeln korrigieren.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;

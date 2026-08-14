@@ -413,7 +413,6 @@ function requestView(){
 async function prepareRealOrder(btn){
   try{
     busy(btn,true,'Auftrag wird vorbereitet …');
-    if(!S.request.metadata?.story_contract){await invoke('build-story-contract',{request_id:S.request.id});await loadRequest(S.request.id)}
     if(!S.readiness)await loadReadiness();
     if(!S.request.metadata?.consent?.ai_processing_accepted){
       toast('Für diesen Auftrag fehlt noch die neue KI-Zustimmung im Kundenformular. Bitte den Testauftrag mit dem aktuellen Formular neu senden.','err');
@@ -422,7 +421,7 @@ async function prepareRealOrder(btn){
     if(!S.readiness?.ai_production_ready){
       toast('OpenAI API-Key fehlt noch.','err');await loadRequest(S.request.id);requestView();return;
     }
-    const d=await invoke('story4kids-full-pipeline',{action:'start',request_id:S.request.id});
+    const d=await invoke('story4kids-pipeline-start',{request_id:S.request.id});
     await loadRequest(S.request.id);
     await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);
     toast(d.already_running?'Die vollständige Buchproduktion läuft bereits serverseitig.':'Buchproduktion gestartet: Ideen → Geschichten → Figuren → Bilder → Review-PDF.','ok');

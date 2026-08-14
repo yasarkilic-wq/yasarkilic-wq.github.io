@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.1-2026-08-14-ai-budget';
+const APP_VERSION='workflow-v5.2-2026-08-15-cover-pdf-auto';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -241,7 +241,7 @@ async function openPrivatePdf(path){
 }
 
 async function loadRequests(){
-  S.requests=await rest('customer_requests?select=id,status,production_stage,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at,book_approved_at,review_pdf_storage_path,review_pdf_generated_at,book_pdf_storage_path,print_provider,print_order_number,print_ordered_at,printed_at,shipping_tracking,shipped_at,completed_at&order=submitted_at.desc&limit=50');
+  S.requests=await rest('customer_requests?select=id,status,production_stage,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at,book_approved_at,review_pdf_storage_path,review_pdf_generated_at,book_pdf_storage_path,book_pdf_generated_at,cover_pdf_storage_path,cover_pdf_generated_at,print_provider,print_order_number,print_ordered_at,printed_at,shipping_tracking,shipped_at,completed_at&order=submitted_at.desc&limit=50');
   if(S.request){const x=S.requests.find(r=>r.id===S.request.id);if(x)S.request=x}
 }
 async function loadRequest(id){
@@ -883,13 +883,27 @@ async function bookView(){
   const printMeta=S.request.metadata?.print_pdf||{};
   const printReady=!!printPath;
   const printBuilding=approved&&!printReady;
+  let coverState=null;
+  try{if(printReady)coverState=await invoke('story4kids-cover-pdf',{action:'status',request_id:S.request.id})}catch(e){coverState={error:e.message}}
+  const coverPath=coverState?.request?.cover_pdf_storage_path||S.request.cover_pdf_storage_path||null;
+  const coverMeta=S.request.metadata?.cover_pdf||coverState?.job?.preflight||{};
+  const coverReady=!!coverPath;
+  const coverFailed=coverState?.job?.status==='failed';
+  const coverBuilding=printReady&&!coverReady&&!coverFailed;
   let reviewBlock='';
   if(reviewReady){
     reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Öffne sie und prüfe Geschichten, Reihenfolge und alle ausgewählten Bilder.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>`;
     if(!approved){
       reviewBlock+=`<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>`;
     }else if(printReady){
-      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Das endgültige Buchlayout ist fertig.</div><div class="book-preview"><div class="big">📘</div><b>Druck-PDF ist fertig</b><span>${esc(printMeta.page_count||'–')} Seiten · 8,5 × 8,5 Zoll · druckfertiger Innenteil</span></div><button class="btn ok" id="openPrintPdf">📘 Druck-PDF öffnen</button>`;
+      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Der druckfertige Innenteil ist fertig.</div><div class="book-preview"><div class="big">📘</div><b>Innenteil ist fertig</b><span>${esc(printMeta.page_count||'–')} Seiten · 8,5 × 8,5 Zoll</span></div><button class="btn ok" id="openPrintPdf">📘 Innenteil öffnen</button>`;
+      if(coverReady){
+        reviewBlock+=`<div class="book-preview"><div class="big">🎨</div><b>Umschlag ist fertig</b><span>Rückseite + Buchrücken + Vorderseite · Rücken ${esc(coverMeta.spine_width_in||'–')} Zoll</span></div><button class="btn ok" id="openCoverPdf">🎨 Umschlag öffnen</button><div class="rule ok"><b>Druckpaket komplett ✓</b><br>Innenteil und Umschlag sind getrennt fertig und können später gemeinsam an Lulu gesendet werden.</div>`;
+      }else if(coverFailed){
+        reviewBlock+=`<div class="rule red"><b>Umschlag-Erstellung gestoppt.</b><br>${esc(coverState?.job?.last_error?.message||'Unbekannter Fehler')}</div><button class="btn" id="startCoverPdf">Umschlag erneut erstellen</button>`;
+      }else{
+        reviewBlock+=`<div class="book-preview"><div class="big">⚙️</div><b>Umschlag wird automatisch erstellt</b><span>Vorderseite, Rückseite und Buchrücken werden passend zur echten Seitenzahl gebaut. Du kannst die Seite schließen.</span></div><button class="btn" disabled>Umschlag wird erstellt …</button>`;
+      }
     }else{
       reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Du musst nichts mehr starten.</div><div class="book-preview"><div class="big">⚙️</div><b>Buchlayout wird automatisch erstellt</b><span>Textsatz, Bilder, Seitenfolge und Drucklayout werden serverseitig vorbereitet. Du kannst die Seite schließen.</span></div><button class="btn" disabled>Druck-PDF wird erstellt …</button>`;
     }
@@ -905,12 +919,14 @@ async function bookView(){
   }else{
     reviewBlock='<button class="btn" disabled>Review-PDF gesperrt - Inhalte fehlen</button>';
   }
-  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}${approved?statusLine('Review freigegeben',true):''}${approved?statusLine('Druck-PDF erstellt',printReady):''}</div>${reviewBlock}`;
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}${approved?statusLine('Review freigegeben',true):''}${approved?statusLine('Druck-PDF erstellt',printReady):''}${printReady?statusLine('Umschlag-PDF erstellt',coverReady):''}</div>${reviewBlock}`;
   if($('#startReviewPdf'))$('#startReviewPdf').onclick=e=>startReviewPdf(e.currentTarget);
   if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
-  if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Druck-PDF wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#openCoverPdf'))$('#openCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird geöffnet …');await openPrivatePdf(coverPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf',{action:'start',request_id:S.request.id,regenerate:true});toast('Umschlag wird serverseitig neu erstellt.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
-  if(running||printBuilding)setTimeout(async()=>{if(route()!=='book')return;try{if(printBuilding)await loadRequest(S.request.id);await bookView()}catch(e){}},5000);
+  if(running||printBuilding||coverBuilding)setTimeout(async()=>{if(route()!=='book')return;try{if(printBuilding||coverBuilding)await loadRequest(S.request.id);await bookView()}catch(e){}},5000);
 }
 
 async function maybeAdvanceToBookReview(){
@@ -997,8 +1013,9 @@ async function selectVariant(id,b){
 function printView(){
   shell(true);activeNav('print');$('#headerSub').textContent='Druck';const items=S.requests.filter(r=>!isDemo(r)&&['print_ready','printing','printed','shipped'].includes(prodStage(r)));
   main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck</h2><div class="small">Hier liegen nur Bücher, deren PDF bereits freigegeben ist.</div></div><span class="pill">${items.length}</span></div>
-  ${items.length?items.map(r=>{const st=prodStage(r);let action='';if(st==='print_ready')action=`<button class="btn" data-order="${r.id}">Druck bestellt →</button>`;if(st==='printing')action=`<button class="btn ok" data-printed="${r.id}">✓ Buch ist angekommen / gedruckt</button>`;if(st==='printed')action=`<button class="btn" data-ship="${r.id}">Als versendet markieren</button>`;if(st==='shipped')action=`<button class="btn ok" data-complete="${r.id}">✓ Auftrag abschließen</button>`;return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)}</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(st)}">${stageLabel(st)}</span></div>${r.book_pdf_storage_path?`<button class="btn secondary" data-pdf="${r.id}">📄 Druck-PDF öffnen</button>`:''}${action}<details style="margin-top:8px"><summary class="small" style="cursor:pointer">Druckdetails anzeigen</summary><div class="kv" style="margin-top:9px"><b>Druckerei</b><span>${esc(r.print_provider||'—')}</span><b>Bestellnr.</b><span>${esc(r.print_order_number||'—')}</span>${r.shipping_tracking?`<b>Tracking</b><span>${esc(r.shipping_tracking)}</span>`:''}</div><button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></details></div>`}).join(''):'<div class="empty">Noch kein Buch ist druckbereit.</div>'}`;
-  document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=async()=>{const r=S.requests.find(x=>x.id===b.dataset.pdf);try{busy(b,true,'PDF wird geöffnet …');await openPrivatePdf(r?.book_pdf_storage_path)}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  ${items.length?items.map(r=>{const st=prodStage(r);let action='';if(st==='print_ready')action=`<button class="btn" data-order="${r.id}">Druck bestellt →</button>`;if(st==='printing')action=`<button class="btn ok" data-printed="${r.id}">✓ Buch ist angekommen / gedruckt</button>`;if(st==='printed')action=`<button class="btn" data-ship="${r.id}">Als versendet markieren</button>`;if(st==='shipped')action=`<button class="btn ok" data-complete="${r.id}">✓ Auftrag abschließen</button>`;return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)}</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(st)}">${stageLabel(st)}</span></div>${r.book_pdf_storage_path?`<button class="btn secondary" data-pdf="${r.id}">📘 Innenteil öffnen</button>`:''}${r.cover_pdf_storage_path?`<button class="btn secondary" data-cover="${r.id}">🎨 Umschlag öffnen</button>`:'<div class="rule warn"><b>Umschlag wird vorbereitet.</b></div>'}${action}<details style="margin-top:8px"><summary class="small" style="cursor:pointer">Druckdetails anzeigen</summary><div class="kv" style="margin-top:9px"><b>Druckerei</b><span>${esc(r.print_provider||'—')}</span><b>Bestellnr.</b><span>${esc(r.print_order_number||'—')}</span>${r.shipping_tracking?`<b>Tracking</b><span>${esc(r.shipping_tracking)}</span>`:''}</div><button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></details></div>`}).join(''):'<div class="empty">Noch kein Buch ist druckbereit.</div>'}`;
+  document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=async()=>{const r=S.requests.find(x=>x.id===b.dataset.pdf);try{busy(b,true,'Innenteil wird geöffnet …');await openPrivatePdf(r?.book_pdf_storage_path)}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  document.querySelectorAll('[data-cover]').forEach(b=>b.onclick=async()=>{const r=S.requests.find(x=>x.id===b.dataset.cover);try{busy(b,true,'Umschlag wird geöffnet …');await openPrivatePdf(r?.cover_pdf_storage_path)}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
   document.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>printOrderSheet(b.dataset.order));
   document.querySelectorAll('[data-printed]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.printed,'printed');toast('Als gedruckt markiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
   document.querySelectorAll('[data-ship]').forEach(b=>b.onclick=()=>shippingSheet(b.dataset.ship));

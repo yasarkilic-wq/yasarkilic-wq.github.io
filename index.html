@@ -130,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4-2026-08-14-storyview-safe';
+const APP_VERSION='workflow-v4.1-2026-08-14-bulk-images';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -143,7 +143,7 @@ const $=s=>document.querySelector(s);
 const main=$('#main'), toastEl=$('#toast'), modal=$('#modal'), sheet=$('#sheet');
 
 function esc(v=''){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-function statusLabel(s){return ({planned:'offen',approved:'freigegeben',generating:'wird erzeugt',ready:'fertig',needs_review:'prüfen',failed:'Fehler',cancelled:'abgebrochen',draft:'Entwurf',reference_ready:'Referenz prüfen',review:'Varianten prüfen',selected:'ausgewählt',candidate:'Variante',rejected:'verworfen'})[s]||s||'—'}
+function statusLabel(s){return ({planned:'offen',approved:'Idee freigegeben',generating:'wird erzeugt',ready:'fertig',needs_review:'prüfen',failed:'Fehler',cancelled:'abgebrochen',draft:'Entwurf',reference_ready:'Referenz prüfen',review:'Varianten prüfen',selected:'ausgewählt',candidate:'Variante',rejected:'verworfen'})[s]||s||'—'}
 function pillClass(s){return ['approved','ready','selected'].includes(s)?'ok':['failed','cancelled'].includes(s)?'red':['generating','reference_ready','review'].includes(s)?'blue':'warn'}
 function prodStage(r){
   const raw=r?.production_stage||r?.metadata?.production_stage||'';
@@ -257,7 +257,31 @@ async function loadCharacters(){if(!S.request)return;S.characters=await rest('cu
 async function loadScenes(storyId){S.scenes[storyId]=await rest('customer_request_story_scenes?select=*&request_story_id=eq.'+encodeURIComponent(storyId)+'&order=scene_index.asc');return S.scenes[storyId]}
 async function loadVariants(sceneId){S.variants[sceneId]=await rest('story_image_variants?select=*&scene_id=eq.'+encodeURIComponent(sceneId)+'&order=variant_index.asc');return S.variants[sceneId]}
 async function loadRequestScenes(){const ids=S.stories.map(x=>x.id);if(!ids.length){S.requestScenes=[];return S.requestScenes}const f=ids.join(',');S.requestScenes=await rest('customer_request_story_scenes?select=*&request_story_id=in.('+f+')&order=request_story_id.asc,scene_index.asc');return S.requestScenes}
-async function loadReadiness(){try{S.readiness=await invoke('story4kids-readiness',{})}catch(e){S.readiness={error:e.message}}}
+async function loadVariantCounts(sceneIds){
+  const counts={};
+  if(!sceneIds?.length)return counts;
+  const rows=await rest('story_image_variants?select=scene_id,id,status&scene_id=in.('+sceneIds.join(',')+')');
+  for(const row of (rows||[]))counts[row.scene_id]=(counts[row.scene_id]||0)+1;
+  return counts;
+}
+async function loadReadiness(){
+  const previous=(S.readiness&&S.readiness.ai_production_ready!==undefined)?S.readiness:null;
+  try{
+    const fresh=await invoke('story4kids-readiness',{});
+    S.readiness={...fresh,_checked_at:Date.now(),_check_error:null,_stale:false};
+  }catch(e){
+    S.readiness=previous
+      ?{...previous,_check_error:e.message,_stale:true}
+      :{_check_error:e.message,_stale:true};
+  }
+  return S.readiness;
+}
+function readinessNeedsRefresh(){
+  return !S.readiness||!!S.readiness._check_error||!S.readiness._checked_at||(Date.now()-S.readiness._checked_at)>60000;
+}
+function aiExplicitlyUnavailable(){
+  return !!S.readiness&&!S.readiness._check_error&&S.readiness.openai_api_key_configured===false;
+}
 async function updateProductionStage(requestId,stage,extra={}){
   const r=S.requests.find(x=>x.id===requestId)||S.request;if(!r)throw new Error('Auftrag nicht gefunden');
   const now=new Date().toISOString();
@@ -414,8 +438,8 @@ async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('
 async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();await updateProductionStage(S.request.id,'story_generation');toast('Alle Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
 async function generateAllStories(){
   const b=$('#generateAll');
-  if(!S.readiness)await loadReadiness();
-  if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}
+  if(readinessNeedsRefresh())await loadReadiness();
+  if(aiExplicitlyUnavailable()){toast('OpenAI API-Key ist aktuell nicht eingerichtet.','err');return}
   if(S.stories.some(x=>x.status==='generating')){toast('Es läuft bereits eine Geschichte. Bitte zuerst warten oder aktualisieren.','err');return}
   const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0,done=0,stopped=false;
   try{
@@ -435,6 +459,7 @@ async function generateAllStories(){
 
 async function storyView(){
   shell(true);activeNav('dashboard');
+  if(readinessNeedsRefresh())await loadReadiness();
   const id=query().get('id');
   const s=S.stories.find(x=>x.id===id);
   $('#headerSub').textContent='Geschichte';
@@ -455,16 +480,28 @@ async function storyView(){
 }
 
 function renderStoryActions(s){
-  let h='',aiReady=!!S.readiness?.ai_production_ready;
+  let h='';
+  const aiUnavailable=aiExplicitlyUnavailable();
+  const aiUnknown=!!S.readiness?._check_error;
   if(s.status==='planned'){
     h+=`<button class="btn ok" id="approveStory">Idee freigeben</button><button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
   }else if(s.status==='failed'&&s.approved_at){
     const msg=s.generation_error?.message||s.generation_error?.provider?.error||s.generation_error?.error||'Bitte erneut erzeugen.';
     h+=`<div class="rule red"><b>KI-Erstellung fehlgeschlagen.</b><br>${esc(msg)}</div>`;
-    h+=aiReady?`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Der OpenAI API-Key muss bereit sein. Der Datenschutzmodus pseudonymisiert direkte Identifikatoren.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
+    if(aiUnavailable){
+      h+=`<div class="rule warn"><b>OpenAI ist aktuell wirklich nicht eingerichtet.</b><br>Bitte die KI-Verbindung in den Einstellungen prüfen.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
+    }else{
+      if(aiUnknown)h+=`<div class="rule warn"><b>KI-Status konnte kurz nicht geprüft werden.</b><br>Der sichere Generator prüft die Verbindung beim Start nochmals serverseitig.</div>`;
+      h+=`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`;
+    }
     h+=`<button class="btn secondary" id="replaceStory">Story-Idee ändern</button>`;
   }else if(s.status==='approved'){
-    h+=aiReady?`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Sobald OpenAI bereit ist, wird dieser Knopf freigeschaltet.</div><button class="btn" disabled>800-Wörter-Geschichte erzeugen</button>`;
+    if(aiUnavailable){
+      h+=`<div class="rule warn"><b>OpenAI ist aktuell wirklich nicht eingerichtet.</b><br>Bitte die KI-Verbindung in den Einstellungen prüfen.</div><button class="btn" disabled>800-Wörter-Geschichte erzeugen</button>`;
+    }else{
+      if(aiUnknown)h+=`<div class="rule warn"><b>KI-Status konnte kurz nicht geprüft werden.</b><br>Der sichere Generator prüft die Verbindung beim Start nochmals serverseitig.</div>`;
+      h+=`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`;
+    }
     h+=`<div class="actions"><button class="btn secondary" id="replaceStory">Idee ersetzen</button><button class="btn danger" id="reopenStory">Freigabe zurücknehmen</button></div>`;
   }else if(s.status==='generating')h+=`<div class="rule warn"><b>Geschichte wird gerade erzeugt.</b><br>Ein zweiter Tab kann keine weitere Geschichte parallel starten.</div>`;
   else if(s.status==='ready')h+=`<div class="rule ok"><b>Geschichte fertig ✓</b><br>Der vollständige Text steht direkt darunter.</div><button class="btn secondary" id="openScenes">Illustrationen bearbeiten</button>`;
@@ -487,8 +524,8 @@ function replaceStorySheet(s){
   $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('story4kids-private-ai',{action:'replace_plan',request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
 async function generateStory(s,btn=null){
-  if(!S.readiness)await loadReadiness();
-  if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}
+  if(readinessNeedsRefresh())await loadReadiness();
+  if(aiExplicitlyUnavailable()){toast('OpenAI API-Key ist aktuell nicht eingerichtet.','err');return}
   if(S.stories.some(x=>x.status==='generating'&&x.id!==s.id)){toast('Es läuft bereits eine andere Geschichte. Bitte warten.','err');return}
   try{
     busy(btn,true,'Geschichte wird erzeugt …');
@@ -555,15 +592,140 @@ async function manageCharacter(id,action,b){
 }
 
 async function illustrationsView(){
-  shell(true);activeNav('dashboard');$('#headerSub').textContent='Illustrationen';if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}await loadRequestScenes();
-  const readyStories=S.stories.filter(x=>x.status==='ready'),groups={};for(const sc of S.requestScenes)(groups[sc.request_story_id]??=[]).push(sc);const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,allPrepared=readyStories.length===15&&prepared===15,allSelected=allPrepared&&S.requestScenes.length>0&&selected===S.requestScenes.length;
-  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">Illustrationen</h2><div class="small">Nach Story gruppiert – niemals mit anderen Kunden vermischt.</div></div><span class="pill">${selected}/${S.requestScenes.length||'–'}</span></div><div class="summary-grid"><div class="summary-tile"><strong>${prepared}/15</strong><span>Storys vorbereitet</span></div><div class="summary-tile"><strong>${selected}/${S.requestScenes.length||0}</strong><span>Bilder ausgewählt</span></div></div>
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Illustrationen';
+  if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
+  await loadRequestScenes();
+
+  const readyStories=S.stories.filter(x=>x.status==='ready'),groups={};
+  for(const sc of S.requestScenes)(groups[sc.request_story_id]??=[]).push(sc);
+
+  const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length;
+  const prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  const allPrepared=readyStories.length===15&&prepared===15;
+  const allSelected=allPrepared&&S.requestScenes.length>0&&selected===S.requestScenes.length;
+
+  let variantCounts={};
+  try{variantCounts=await loadVariantCounts(S.requestScenes.map(x=>x.id))}catch{}
+  const generatingScenes=S.requestScenes.filter(x=>x.status==='generating');
+  const bulkItems=S.requestScenes.filter(sc=>{
+    if(sc.status==='selected'||sc.selected_variant_id)return false;
+    return (variantCounts[sc.id]||0)<3;
+  });
+  const reviewReady=S.requestScenes.filter(sc=>{
+    if(sc.status==='selected'||sc.selected_variant_id)return false;
+    return (variantCounts[sc.id]||0)>=3;
+  }).length;
+
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button>
+  <div class="row"><div><h2 style="margin-bottom:2px">Illustrationen</h2><div class="small">Nach Story gruppiert – niemals mit anderen Kunden vermischt.</div></div><span class="pill">${selected}/${S.requestScenes.length||'–'}</span></div>
+  <div class="summary-grid">
+    <div class="summary-tile"><strong>${prepared}/15</strong><span>Storys vorbereitet</span></div>
+    <div class="summary-tile"><strong>${selected}/${S.requestScenes.length||0}</strong><span>Bilder ausgewählt</span></div>
+  </div>
+
   ${prepared<readyStories.length?`<div class="card" style="margin-top:9px"><b>Bildszenen vorbereiten</b><div class="desc">Für jede fertige Geschichte werden 2–3 konkrete Bildmomente angelegt.</div><button class="btn" id="prepareAllScenes">Alle fehlenden Storys vorbereiten</button></div>`:''}
+
+  ${allPrepared&&bulkItems.length?`<div class="card" style="margin-top:9px">
+    <b>Alle offenen Bilder automatisch erzeugen</b>
+    <div class="desc">Einmal drücken: Story4Kids erzeugt die fehlenden Szenen automatisch nacheinander. Bereits vorhandene Varianten und ausgewählte Bilder werden nicht doppelt erzeugt.</div>
+    ${reviewReady?`<div class="inline-note">${reviewReady} Szene${reviewReady===1?'':'n'} haben bereits Varianten und warten nur auf deine Auswahl.</div>`:''}
+    ${generatingScenes.length?`<div class="rule warn"><b>Es läuft gerade noch eine Bildszene.</b><br>Warte bitte, bis sie fertig ist.</div>`:`<button class="btn" id="generateAllVariants">Alle ${bulkItems.length} offenen Szenen erzeugen</button>
+    <div class="inline-note">⚠️ Dabei werden bis zu ${bulkItems.length*3} neue Bildvarianten erzeugt. Die Seite sollte währenddessen geöffnet bleiben. Bei einem echten Fehler stoppt die Automatik sicher und kann später fortgesetzt werden.</div>`}
+    <div id="bulkImageProgress"></div>
+  </div>`:''}
+
+  ${allPrepared&&!bulkItems.length&&reviewReady?`<div class="okbox" style="margin-top:9px"><b>Alle fehlenden Varianten sind erzeugt ✓</b><br>${reviewReady} Bildszene${reviewReady===1?'':'n'} warten noch auf deine Auswahl.</div>`:''}
+
   ${allSelected?`<div class="okbox" style="margin-top:9px"><b>Alle Illustrationen ausgewählt ✓</b><br>Der Auftrag kann in die Buchprüfung.</div><button class="btn" id="toBook">Weiter zur Buchprüfung</button>`:''}
-  <div class="section-title">15 Storys</div>${S.stories.map(st=>{const g=groups[st.id]||[],sel=g.filter(x=>x.status==='selected'||x.selected_variant_id).length;return `<div class="sectionlink ${st.status!=='ready'?'locked':''}"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>${st.status!=='ready'?'Geschichte noch nicht fertig':g.length?`${sel}/${g.length} Bilder ausgewählt`:'Bildszenen noch nicht vorbereitet'}</span></div>${st.status==='ready'?`<button class="mini-btn" data-storyimages="${st.id}">${g.length?'Bilder':'Vorbereiten'} ›</button>`:'<span>–</span>'}</div>`}).join('')}`;
-  if($('#prepareAllScenes'))$('#prepareAllScenes').onclick=prepareAllScenes;if($('#toBook'))$('#toBook').onclick=async()=>{await updateProductionStage(S.request.id,'book_review');go('book',{id:S.request.id})};document.querySelectorAll('[data-storyimages]').forEach(b=>b.onclick=async()=>{const st=S.stories.find(x=>x.id===b.dataset.storyimages),g=groups[st.id]||[];if(!g.length){try{busy(b,true);await invoke('materialize-story-scenes',{request_story_id:st.id});await loadRequestScenes();toast('Bildszenen vorbereitet.','ok');await illustrationsView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}else go('scenes',{story:st.id,request:S.request.id})});
+
+  <div class="section-title">15 Storys</div>
+  ${S.stories.map(st=>{const g=groups[st.id]||[],sel=g.filter(x=>x.status==='selected'||x.selected_variant_id).length;return `<div class="sectionlink ${st.status!=='ready'?'locked':''}"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>${st.status!=='ready'?'Geschichte noch nicht fertig':g.length?`${sel}/${g.length} Bilder ausgewählt`:'Bildszenen noch nicht vorbereitet'}</span></div>${st.status==='ready'?`<button class="mini-btn" data-storyimages="${st.id}">${g.length?'Bilder':'Vorbereiten'} ›</button>`:'<span>–</span>'}</div>`}).join('')}`;
+
+  if($('#prepareAllScenes'))$('#prepareAllScenes').onclick=prepareAllScenes;
+  if($('#generateAllVariants'))$('#generateAllVariants').onclick=()=>generateAllMissingVariants(variantCounts);
+  if($('#toBook'))$('#toBook').onclick=async()=>{await updateProductionStage(S.request.id,'book_review');go('book',{id:S.request.id})};
+
+  document.querySelectorAll('[data-storyimages]').forEach(b=>b.onclick=async()=>{
+    const st=S.stories.find(x=>x.id===b.dataset.storyimages),g=groups[st.id]||[];
+    if(!g.length){
+      try{busy(b,true);await invoke('materialize-story-scenes',{request_story_id:st.id});await loadRequestScenes();toast('Bildszenen vorbereitet.','ok');await illustrationsView()}
+      catch(e){toast(e.message,'err')}
+      finally{busy(b,false)}
+    }else go('scenes',{story:st.id,request:S.request.id})
+  });
 }
+
 async function prepareAllScenes(){const b=$('#prepareAllScenes'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)),items=S.stories.filter(x=>x.status==='ready'&&!prepared.has(x.id));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} vorbereiten …`;try{await invoke('materialize-story-scenes',{request_story_id:items[i].id})}catch(e){errors++}}await loadRequestScenes();toast(errors?`${errors} Storys konnten nicht vorbereitet werden.`:'Alle Bildszenen vorbereitet.','ok');await illustrationsView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+
+async function generateAllMissingVariants(initialCounts={}){
+  const b=$('#generateAllVariants');
+  if(!b)return;
+  await loadRequestScenes();
+
+  let counts={...initialCounts};
+  try{counts=await loadVariantCounts(S.requestScenes.map(x=>x.id))}catch{}
+
+  if(S.requestScenes.some(x=>x.status==='generating')){
+    toast('Es läuft bereits eine Bildszene. Bitte erst fertig werden lassen.','err');
+    return;
+  }
+
+  const storyMap=Object.fromEntries(S.stories.map(x=>[x.id,x]));
+  const items=S.requestScenes.filter(sc=>{
+    if(sc.status==='selected'||sc.selected_variant_id)return false;
+    return (counts[sc.id]||0)<3;
+  });
+
+  if(!items.length){
+    toast('Alle fehlenden Bildvarianten sind bereits vorhanden.','ok');
+    await illustrationsView();
+    return;
+  }
+
+  const maxNew=items.reduce((n,sc)=>n+((counts[sc.id]||0)>0?3:3),0);
+  const ok=confirm(`Alle ${items.length} offenen Bildszene${items.length===1?'':'n'} automatisch erzeugen?\n\nEs werden jeweils 3 Varianten erstellt (bis zu ${maxNew} neue Bilder). Bereits fertige Szenen werden übersprungen.\n\nDie Seite sollte währenddessen geöffnet bleiben.`);
+  if(!ok)return;
+
+  let wake=null;
+  try{if(navigator.wakeLock?.request)wake=await navigator.wakeLock.request('screen')}catch{}
+
+  let done=0;
+  try{
+    busy(b,true);
+    for(let i=0;i<items.length;i++){
+      const sc=items[i],story=storyMap[sc.request_story_id],existing=counts[sc.id]||0;
+      b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} · Story ${story?.position||'–'}, Szene ${sc.scene_index} …`;
+      const p=$('#bulkImageProgress');
+      if(p)p.innerHTML=`<div class="rule"><b>Automatik läuft</b><br>${done}/${items.length} Szenen abgeschlossen. Aktuell: Story ${story?.position||'–'}, Szene ${sc.scene_index}.</div>`;
+
+      try{
+        await invoke('story4kids-private-ai',{
+          action:'scene_variants',
+          request_id:S.request.id,
+          scene_id:sc.id,
+          variant_count:3,
+          regenerate:existing>0
+        });
+
+        const check=await loadVariants(sc.id);
+        if(check.length<3)throw new Error('Es wurden weniger als 3 Bildvarianten gespeichert.');
+        counts[sc.id]=check.length;
+        done++;
+      }catch(e){
+        const p2=$('#bulkImageProgress');
+        if(p2)p2.innerHTML=`<div class="rule red"><b>Automatik sicher gestoppt.</b><br>Story ${story?.position||'–'}, Szene ${sc.scene_index}: ${esc(e.message)}<br>Du kannst später mit demselben Knopf fortsetzen.</div>`;
+        toast('Bildautomatik gestoppt – kein weiterer Auftrag wurde gestartet.','err');
+        return;
+      }
+    }
+
+    toast(`Alle ${done} offenen Bildszene${done===1?'':'n'} wurden erzeugt. Jetzt nur noch auswählen.`, 'ok');
+    await illustrationsView();
+  }finally{
+    try{await wake?.release()}catch{}
+    if(document.body.contains(b))busy(b,false);
+  }
+}
 async function bookView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;await loadRequestScenes();const storyReady=S.stories.filter(x=>x.status==='ready').length,charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length,pdf=!!S.request.book_pdf_storage_path,all=storyReady===15&&charOk&&imagesOk;
   const demo=String(S.request.metadata?.demo_workflow||'')==='true'||S.request.metadata?.demo_workflow===true;
@@ -572,6 +734,23 @@ async function bookView(){
   if($('#approveBook'))$('#approveBook').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(S.request.id,'print_ready');toast('Buch ist druckbereit.','ok');go('print')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 
+function openVariantViewer(url,variantId,isSelected,label='Bildvariante'){
+  sheet.innerHTML=`<div class="row"><h2>${esc(label)}</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div>
+  <div style="background:#111;border-radius:16px;overflow:hidden;margin-top:8px"><img id="viewerImage" alt="${esc(label)}" style="width:100%;height:auto;display:block;max-height:68vh;object-fit:contain" src="${url}"></div>
+  <div class="inline-note">Zum genauen Prüfen kannst du das Bild auf dem Handy mit zwei Fingern vergrößern.</div>
+  ${isSelected?'<button class="btn ok" disabled>✓ Dieses Bild ist ausgewählt</button>':`<button class="btn ok" id="viewerUse">Dieses Bild verwenden</button>`}`;
+  modal.classList.add('open');
+  if($('#viewerUse'))$('#viewerUse').onclick=async e=>{
+    try{
+      busy(e.currentTarget,true,'Auswählen …');
+      await invoke('select-story-image-variant',{variant_id:variantId});
+      closeModal();
+      toast('Bild ausgewählt.','ok');
+      await scenesView();
+    }catch(err){toast(err.message,'err')}
+    finally{if($('#viewerUse'))busy($('#viewerUse'),false)}
+  };
+}
 async function scenesView(){
   shell(true);activeNav('dashboard');const storyId=query().get('story'),s=S.stories.find(x=>x.id===storyId);$('#headerSub').textContent='Illustrationen';
   if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
@@ -595,7 +774,17 @@ async function renderScenes(story,scenes){
     const vr=$('#variants-'+sc.id);
     for(const x of v){
       const d=document.createElement('div');d.className='variant '+(x.status==='selected'?'selected':'');d.innerHTML=`<div class="loading mini">Bild …</div>${x.status!=='selected'?`<button data-select="${x.id}">Verwenden</button>`:'<button disabled>✓ ausgewählt</button>'}`;vr.appendChild(d);
-      privateImage(x.storage_path).then(u=>{if(u)d.insertAdjacentHTML('afterbegin',`<img alt="Variante ${x.variant_index}" src="${u}">`);d.querySelector('.loading')?.remove()}).catch(()=>{d.querySelector('.loading').textContent='Bild nicht ladbar'});
+      privateImage(x.storage_path).then(u=>{
+        if(u){
+          const img=document.createElement('img');
+          img.alt=`Variante ${x.variant_index}`;
+          img.src=u;
+          img.style.cursor='zoom-in';
+          img.onclick=()=>openVariantViewer(u,x.id,x.status==='selected',`Variante ${x.variant_index}`);
+          d.insertAdjacentElement('afterbegin',img);
+        }
+        d.querySelector('.loading')?.remove();
+      }).catch(()=>{d.querySelector('.loading').textContent='Bild nicht ladbar'});
     }
   }
   document.querySelectorAll('[data-vargen]').forEach(b=>b.onclick=()=>generateVariants(b.dataset.vargen,b.dataset.regen==='1',b));

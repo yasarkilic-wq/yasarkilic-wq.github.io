@@ -130,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.4-2026-08-14-server-story-batch-review-pdf';
+const APP_VERSION='workflow-v4.6-2026-08-14-live-order-progress';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -161,7 +161,7 @@ function contactInfo(r){
 }
 function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
 function isDemo(r){return r?.metadata?.demo_workflow===true||String(r?.metadata?.demo_workflow||'')==='true'}
-function nextAction(r){const s=prodStage(r);return ({new:'Auftrag prüfen',story_plan:'Story-Ideen freigeben',story_generation:'Geschichten erstellen',characters:'Figuren festlegen',illustrations:'Illustrationen erstellen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
+function nextAction(r){const s=prodStage(r);if(s==='story_generation'&&r?.status==='generating')return 'Geschichten werden erstellt';return ({new:'Auftrag prüfen',story_plan:'Story-Ideen freigeben',story_generation:'Geschichten erstellen',characters:'Figuren festlegen',illustrations:'Illustrationen erstellen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
 function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
 
@@ -342,7 +342,7 @@ function compactFlow(stage){
 function requestView(){
   shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
   $('#headerSub').textContent=esc(r.child_first_name)+' · Auftrag';
-  const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{},stage=prodStage(r);
+  const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{};
   const planned=S.stories.filter(x=>x.status==='planned').length;
   const approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length;
   const ready=S.stories.filter(x=>x.status==='ready').length;
@@ -350,7 +350,20 @@ function requestView(){
   const charApproved=S.characters.filter(x=>x.status==='approved').length,charTotal=S.characters.length;
   const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,sceneTotal=S.requestScenes.length;
   const sceneStories=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  const storedStage=prodStage(r);
+  let stage=storedStage;
+  // Selbstheilende Anzeige: der echte Inhalt ist maßgeblich, falls ein alter Stage-Wert hängen blieb.
+  if(BOOK_STAGES.includes(storedStage)){
+    if(ready===15 && charTotal>0 && charApproved===charTotal && sceneTotal>0 && selected===sceneTotal) stage='book_review';
+    else if(ready===15 && charTotal>0 && charApproved===charTotal) stage='illustrations';
+    else if(ready===15) stage='characters';
+    else if(S.stories.length===15 && planned===0) stage='story_generation';
+    else if(S.stories.length===15) stage='story_plan';
+  }
   const hasContract=!!meta.story_contract,hasPlan=!!meta.story_plan&&S.stories.length===15;
+  const batchJob=S.storyBatch?.job||null;
+  const batchRunning=batchJob?.status==='running';
+  const batchPos=Number(batchJob?.current_position||0);
   let taskTitle=nextAction(r),taskText='',taskButton='';
   if(stage==='new'){
     taskTitle='Auftrag vorbereiten';
@@ -359,7 +372,15 @@ function requestView(){
   }else if(stage==='story_plan'){
     taskTitle='Story-Ideen freigeben';taskText=`${approved}/15 sind freigegeben. Du musst nur Titel und Kurzinhalt prüfen.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Ideen prüfen</button>`;
   }else if(stage==='story_generation'){
-    taskTitle=failed?'Fehler automatisch beheben':'Geschichten erstellen';taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">${failed?'Probleme öffnen':'Geschichten erstellen'}</button>`;
+    if(batchRunning){
+      taskTitle='Geschichten werden erstellt';
+      taskText=`${ready}/15 Geschichten fertig.${batchPos?' Aktuell wird Geschichte '+batchPos+' erstellt.':''} Die Produktion läuft serverseitig weiter.`;
+      taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Fortschritt öffnen</button>`;
+    }else{
+      taskTitle=failed?'Fehler automatisch beheben':'Geschichten erstellen';
+      taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;
+      taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">${failed?'Probleme öffnen':'Geschichten erstellen'}</button>`;
+    }
   }else if(stage==='characters'){
     taskTitle='Figuren festlegen';taskText=`${charApproved}/${charTotal||'–'} Figuren sind freigegeben. Erst danach entstehen die Story-Bilder.`;taskButton=`<button class="btn" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren prüfen</button>`;
   }else if(stage==='illustrations'){
@@ -370,7 +391,7 @@ function requestView(){
     taskTitle=nextAction(r);taskText='Die Buchproduktion ist abgeschlossen. Dieser Auftrag liegt jetzt im Druck-/Versandbereich.';taskButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
   }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
 
-  const storySummary=ready===15?'15/15 fertig':approved===15?`${ready}/15 fertig`:`${approved}/15 Ideen`;
+  const storySummary=ready===15?'15/15 fertig':(stage==='story_plan'||planned>0)?`${approved}/15 Ideen frei`:S.stories.length===15?`${ready}/15 fertig`:`${approved}/15 Ideen`;
   const charSummary=charTotal?`${charApproved}/${charTotal} frei`:'noch offen';
   const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
   main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button>
@@ -447,11 +468,12 @@ function stopStoryBatchPolling(){if(window._storyBatchTimer){clearTimeout(window
 function startStoryBatchPolling(requestId){
   stopStoryBatchPolling();
   const tick=async()=>{
-    if(route()!=='production'||!S.request||S.request.id!==requestId){stopStoryBatchPolling();return}
+    const activeRoute=route();
+    if(!['production','request'].includes(activeRoute)||!S.request||S.request.id!==requestId){stopStoryBatchPolling();return}
     try{
       await Promise.all([loadStories(),loadStoryBatchStatus(requestId)]);
       if(S.storyBatch?.stats?.ready===15){await loadRequest(requestId);toast('15/15 Geschichten sind fertig.','ok')}
-      productionView();
+      if(activeRoute==='production')productionView();else requestView();
       if(S.storyBatch?.job?.status==='running')window._storyBatchTimer=setTimeout(tick,12000);
     }catch(e){window._storyBatchTimer=setTimeout(tick,15000)}
   };
@@ -784,7 +806,7 @@ async function cancelServerImageBatch(){
 async function startReviewPdf(btn){
   try{
     busy(btn,true,'Review-PDF wird gestartet …');
-    await invoke('story4kids-review-pdf',{action:'start',request_id:S.request.id});
+    const d=await invoke('story4kids-review-pdf',{action:'start',request_id:S.request.id,regenerate:true});
     toast('Review-PDF läuft jetzt serverseitig. Dein Handy darf gesperrt werden.','ok');
     await bookView();
   }catch(e){toast(e.message,'err')}
@@ -826,7 +848,10 @@ async function bookView(){
   }else if(running){
     reviewBlock=`<div class="book-preview"><div class="big">⚙️</div><b>Review-PDF wird erstellt</b><span>${done}/15 Geschichten verarbeitet${job.current_story_position?' · aktuell Geschichte '+job.current_story_position:''}. Das läuft serverseitig weiter.</span></div><div class="progress"><span style="width:${pct}%"></span></div><div class="small" style="margin-top:6px">${pct}% · Handy darf gesperrt werden</div><button class="btn" disabled>Review-PDF wird erstellt …</button>`;
   }else if(failed){
-    reviewBlock=`<div class="rule red"><b>PDF-Erstellung gestoppt.</b><br>${esc(job.last_error||'Unbekannter Fehler')}</div><button class="btn" id="startReviewPdf">Review-PDF erneut starten</button>`;
+    const oldMemoryError=String(job.last_error||'').includes('Array buffer allocation failed');
+    reviewBlock=oldMemoryError
+      ?`<div class="rule warn"><b>Alter PDF-Fehler erkannt.</b><br>Der erste Generator ist beim Zusammenfügen an der Dateigröße gescheitert. Der neue komprimierte Generator ist aktiv; dieser alte Fehler bleibt nur als Protokoll erhalten.</div><button class="btn" id="startReviewPdf">Mit neuem PDF-Generator starten</button>`
+      :`<div class="rule red"><b>PDF-Erstellung gestoppt.</b><br>${esc(job.last_error||'Unbekannter Fehler')}</div><button class="btn" id="startReviewPdf">Review-PDF erneut starten</button>`;
   }else if(all){
     reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Alles bereit für die Endkontrolle</b><span>Jetzt wird aus den 15 Geschichten und 32 ausgewählten Bildern eine private Review-PDF erstellt.</span></div><div class="rule warn"><b>Nur Kontroll-PDF.</b><br>Noch kein Drucklayout und keine Druckfreigabe.</div><button class="btn" id="startReviewPdf">Review-PDF erzeugen</button>`;
   }else{
@@ -837,6 +862,17 @@ async function bookView(){
   if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
   if(running)setTimeout(()=>{if(route()==='book')bookView()},5000);
+}
+
+async function maybeAdvanceToBookReview(){
+  await loadRequestScenes();
+  const allSelected=S.requestScenes.length>0&&S.requestScenes.every(x=>x.status==='selected'||x.selected_variant_id);
+  if(allSelected && BOOK_STAGES.includes(prodStage(S.request)) && prodStage(S.request)!=='book_review'){
+    await updateProductionStage(S.request.id,'book_review');
+    await loadRequest(S.request.id);
+    return true;
+  }
+  return false;
 }
 
 function openVariantViewer(url,variantId,isSelected,label='Bildvariante'){
@@ -850,8 +886,9 @@ function openVariantViewer(url,variantId,isSelected,label='Bildvariante'){
       busy(e.currentTarget,true,'Auswählen …');
       await invoke('select-story-image-variant',{variant_id:variantId});
       closeModal();
-      toast('Bild ausgewählt.','ok');
-      await scenesView();
+      const advanced=await maybeAdvanceToBookReview();
+      toast(advanced?'Alle Bilder fertig - weiter zur Buchprüfung.':'Bild ausgewählt.','ok');
+      if(advanced)go('book',{id:S.request.id});else await scenesView();
     }catch(err){toast(err.message,'err')}
     finally{if($('#viewerUse'))busy($('#viewerUse'),false)}
   };
@@ -899,7 +936,13 @@ async function generateVariants(sceneId,regenerate,b){
   try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('story4kids-private-ai',{action:'scene_variants',request_id:S.request.id,scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function selectVariant(id,b){
-  try{busy(b,true,'Auswählen …');await invoke('select-story-image-variant',{variant_id:id});toast('Bild ausgewählt.','ok');await scenesView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
+  try{
+    busy(b,true,'Auswählen …');
+    await invoke('select-story-image-variant',{variant_id:id});
+    const advanced=await maybeAdvanceToBookReview();
+    toast(advanced?'Alle Bilder fertig - weiter zur Buchprüfung.':'Bild ausgewählt.','ok');
+    if(advanced)go('book',{id:S.request.id});else await scenesView();
+  }catch(e){toast(e.message,'err')}finally{busy(b,false)}
 }
 
 function printView(){
@@ -940,7 +983,7 @@ async function render(){
     if(r==='dashboard')return dashboardView();
     if(r==='print')return printView();
     if(r==='settings')return settingsView();
-    if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return requestView()}
+    if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);else await loadStories();await loadStoryBatchStatus(S.request?.id);const v=requestView();if(S.storyBatch?.job?.status==='running')startStoryBatchPolling(S.request.id);return v}
     if(r==='illustrations'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return illustrationsView()}
     if(r==='book'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return bookView()}
     if(!S.request&&S.requests.length)await loadRequest(S.requests[0].id);

@@ -70,7 +70,7 @@ textarea{min-height:85px;resize:vertical}
 .variant.selected{border-color:var(--ok)}
 .variant img{width:100%;height:100%;object-fit:cover;display:block}
 .variant button{position:absolute;left:5px;right:5px;bottom:5px;border:0;border-radius:9px;background:#ffffffed;padding:7px 4px;font-size:10px;font-weight:850;color:var(--navy)}
-.bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(3,1fr);background:#fffdf9ee;backdrop-filter:blur(15px);border-top:1px solid var(--line);padding:6px 3px max(7px,env(safe-area-inset-bottom));z-index:40}
+.bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(2,1fr);background:#fffdf9ee;backdrop-filter:blur(15px);border-top:1px solid var(--line);padding:6px 3px max(7px,env(safe-area-inset-bottom));z-index:40}
 .bottomnav button{border:0;background:none;color:#606b74;font-size:10px;font-weight:800;padding:4px}.bottomnav button.active{color:var(--navy)}.bottomnav span{display:block;font-size:19px;margin-bottom:2px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:74px;width:min(470px,calc(100% - 28px));z-index:100;border-radius:14px;padding:12px 13px;background:#1f3444;color:#fff;box-shadow:0 10px 30px #0003;font-size:12px;display:none}
 .toast.show{display:block}.toast.err{background:#8f4545}.toast.ok{background:#176b52}
@@ -92,6 +92,11 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 .story-quick{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px;margin-bottom:7px}.story-quick .actions{grid-template-columns:1fr auto}.story-quick .mini-btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:10px;padding:8px 10px;font-size:10px;font-weight:850}.story-quick .mini-btn.ok{background:#eaf6f1;color:var(--ok);border-color:#cbe6db}
 .checks{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.check{font-size:9px;border-radius:999px;padding:4px 7px;background:#eef4f6;color:#527080}.check.ok{background:#e7f4ee;color:var(--ok)}.check.warn{background:#fff0d4;color:#87580d}
 .print-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px;margin-bottom:9px}.print-card .btn{margin-top:10px}
+.flowbar{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:12px 0 14px}.flowdot{text-align:center;font-size:8px;color:#78838c;min-width:0}.flowdot i{display:grid;place-items:center;width:25px;height:25px;margin:0 auto 4px;border-radius:50%;background:#edf0f2;font-style:normal;font-weight:900}.flowdot.done i{background:#e7f4ee;color:var(--ok)}.flowdot.now i{background:var(--navy);color:#fff}.flowdot.future{opacity:.48}.flowdot span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bigstep{background:linear-gradient(145deg,#173957,#285978);color:#fff;border-radius:22px;padding:18px;margin:11px 0 13px;box-shadow:var(--shadow)}.bigstep .eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:9px;font-weight:900;opacity:.7}.bigstep h3{font-size:20px;margin:5px 0 6px}.bigstep p{font-size:12px;line-height:1.45;margin:0;opacity:.86}.bigstep .btn{background:#fff;color:var(--navy);margin-top:13px}
+.overview-card{background:#fff;border:1px solid var(--line);border-radius:18px;margin-bottom:9px;overflow:hidden}.overview-card summary{list-style:none;padding:13px;cursor:pointer}.overview-card summary::-webkit-details-marker{display:none}.overview-card summary .row{align-items:center}.overview-card .inside{border-top:1px solid #eee;padding:12px 13px}.overview-card .chev{font-size:16px;color:#89939a}
+.simple-status{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0 12px}.simple-status>div{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px}.simple-status b{display:block;font-size:18px;color:var(--navy)}.simple-status span{font-size:9px;color:var(--muted)}
+.form-cta{background:#f2f6f8;border:1px solid #dce6eb;border-radius:17px;padding:13px;margin:9px 0 13px}.form-cta b{color:var(--navy);font-size:13px}.form-cta p{font-size:10px;color:var(--muted);margin:4px 0 8px}.form-cta .btn{margin:0}
 .sectionlink{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px;margin-bottom:8px}.sectionlink b{font-size:13px;color:var(--navy)}.sectionlink span{font-size:11px;color:var(--muted)}
 
 
@@ -112,6 +117,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
     <div><strong>Story4Kids</strong><small id="headerSub">Admin-Produktion</small></div>
     <div class="head-actions">
       <button class="iconbtn hidden" id="refreshBtn" title="Aktualisieren">↻</button>
+      <button class="iconbtn hidden" id="settingsBtn" title="Einstellungen">⚙</button>
       <button class="iconbtn hidden" id="logoutBtn" title="Abmelden">↪</button>
     </div>
   </div>
@@ -120,7 +126,6 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <nav class="bottomnav hidden" id="bottomnav">
   <button data-route="dashboard"><span>⌂</span>Aufträge</button>
   <button data-route="print"><span>▣</span>Druck</button>
-  <button data-route="settings"><span>⚙</span>Einstellungen</button>
 </nav>
 </div>
 <div class="toast" id="toast"></div>
@@ -156,6 +161,7 @@ function contactInfo(r){
   return {email:r?.customer_email||c.email||'',phone:r?.customer_phone||c.phone||'',instagram,preferred};
 }
 function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
+function isDemo(r){return r?.metadata?.demo_workflow===true||String(r?.metadata?.demo_workflow||'')==='true'}
 function nextAction(r){const s=prodStage(r);return ({new:'Auftrag prüfen',story_plan:'Story-Ideen freigeben',story_generation:'Geschichten erstellen',characters:'Figuren festlegen',illustrations:'Illustrationen erstellen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
 function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
@@ -266,7 +272,7 @@ function activeNav(name){document.querySelectorAll('[data-route]').forEach(b=>b.
 function route(){return (location.hash||'#login').slice(1).split('?')[0]}
 function query(){return new URLSearchParams((location.hash.split('?')[1]||''))}
 function go(r,params={}){const q=new URLSearchParams(params).toString();location.hash=r+(q?'?'+q:'')}
-function shell(on=true){$('#bottomnav').classList.toggle('hidden',!on);$('#refreshBtn').classList.toggle('hidden',!on);$('#logoutBtn').classList.toggle('hidden',!on)}
+function shell(on=true){$('#bottomnav').classList.toggle('hidden',!on);$('#refreshBtn').classList.toggle('hidden',!on);$('#settingsBtn').classList.toggle('hidden',!on);$('#logoutBtn').classList.toggle('hidden',!on)}
 
 function loginView(){
   shell(false);$('#headerSub').textContent='Sicherer Admin-Login';
@@ -287,46 +293,85 @@ function loginView(){
 function dashboardView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Aufträge';
   const filter=query().get('filter')||'open';
-  const visible=S.requests.filter(r=>filter==='all'||(filter==='done'?prodStage(r)==='completed':!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))));
-  const openCount=S.requests.filter(r=>!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))).length;
-  const doneCount=S.requests.filter(r=>prodStage(r)==='completed').length;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Aufträge</h2><div class="small">Ein Kunde = ein kompletter Buchauftrag.</div></div><span class="pill">${S.requests.length}</span></div>
+  const real=S.requests.filter(r=>!isDemo(r));
+  const visible=real.filter(r=>filter==='all'||(filter==='done'?prodStage(r)==='completed':!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))));
+  const openCount=real.filter(r=>!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))).length;
+  const doneCount=real.filter(r=>prodStage(r)==='completed').length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Aufträge</h2><div class="small">Jeder Kunde hat genau einen eigenen Buchauftrag.</div></div><span class="pill">${real.length}</span></div>
+  <div class="form-cta"><b>Neuen echten Testauftrag anlegen</b><p>Fülle das Kundenformular wie ein Kunde aus. Danach erscheint der Auftrag automatisch hier.</p><button class="btn secondary" id="openCustomerForm">Kundenformular öffnen ↗</button></div>
   <div class="tabs"><button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${openCount}</button><button class="tab ${filter==='done'?'active':''}" data-filter="done">Abgeschlossen ${doneCount}</button><button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle</button></div>
-  ${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div><div class="contact">${contactHtml(r)}</div><div class="order-progress"><span style="width:${bookProgressPercent(r)}%"></span></div><div class="order-meta"><span>Buchfortschritt ${bookProgressPercent(r)}%</span><span>${esc(nextAction(r))} →</span></div></a>`).join(''):'<div class="empty">Hier gibt es gerade keine Aufträge.</div>'}`;
+  ${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div><div class="contact">${contactHtml(r)}</div><div class="order-progress"><span style="width:${bookProgressPercent(r)}%"></span></div><div class="order-meta"><span>${bookProgressPercent(r)}% Buchfortschritt</span><b>${esc(nextAction(r))} →</b></div></a>`).join(''):'<div class="empty">Noch kein Auftrag vorhanden. Öffne oben das Kundenformular.</div>'}`;
+  $('#openCustomerForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=1','_blank');
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>go('dashboard',{filter:b.dataset.filter}));
 }
 function phaseRow(icon,title,subtitle,state,routeName,done,current,locked=false){const href=routeName&&!locked?`href="#${routeName}"`:'';return `<a class="phase-row ${done?'done':''} ${current?'current':''} ${locked?'locked':''}" ${href}><div class="phase-icon">${done?'✓':icon}</div><div class="phase-main"><b>${esc(title)}</b><span>${esc(subtitle)}</span></div><div class="phase-state">${esc(state)}</div></a>`}
+function compactFlow(stage){
+  const steps=[['Kunde','new'],['Ideen','story_plan'],['Text','story_generation'],['Figuren','characters'],['Bilder','illustrations'],['Buch','book_review']];
+  const current=Math.min(5,Math.max(0,BOOK_STAGES.indexOf(stage)));
+  return `<div class="flowbar">${steps.map((x,i)=>`<div class="flowdot ${i<current?'done':i===current?'now':'future'}"><i>${i<current?'✓':i+1}</i><span>${x[0]}</span></div>`).join('')}</div>`;
+}
 function requestView(){
   shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
   $('#headerSub').textContent=esc(r.child_first_name)+' · Auftrag';
   const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{},stage=prodStage(r);
-  const planned=S.stories.filter(x=>x.status==='planned').length,approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length,ready=S.stories.filter(x=>x.status==='ready').length,failed=S.stories.filter(x=>x.status==='failed').length;
+  const planned=S.stories.filter(x=>x.status==='planned').length;
+  const approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length;
+  const ready=S.stories.filter(x=>x.status==='ready').length;
+  const failed=S.stories.filter(x=>x.status==='failed').length;
   const charApproved=S.characters.filter(x=>x.status==='approved').length,charTotal=S.characters.length;
   const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,sceneTotal=S.requestScenes.length;
   const sceneStories=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  const hasContract=!!meta.story_contract,hasPlan=!!meta.story_plan&&S.stories.length===15;
   let taskTitle=nextAction(r),taskText='',taskButton='';
-  if(stage==='new'){taskText='Kundendaten kurz kontrollieren. Danach startet die Storyplanung.';taskButton='<button class="btn" id="startPrep">Auftrag geprüft – weiter</button>'}
-  else if(stage==='story_plan'){taskText=`${planned} Story-Ideen warten noch auf deine Freigabe. Du siehst nur diesen Auftrag.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Ideen prüfen</button>`}
-  else if(stage==='story_generation'){taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' mit Fehler':''}.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Geschichten erstellen / prüfen</button>`}
-  else if(stage==='characters'){taskText=`${charApproved}/${charTotal||'–'} Figuren freigegeben. Diese Referenzen halten die Bilder konsistent.`;taskButton=`<button class="btn" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren bearbeiten</button>`}
-  else if(stage==='illustrations'){taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Die 15 Storys bleiben dabei getrennt.`;taskButton=`<button class="btn" onclick="go('illustrations',{id:'${esc(r.id)}'})">Illustrationen öffnen</button>`}
-  else if(stage==='book_review'){taskText='Alle Inhalte werden für das fertige Buch zusammengeführt. Druck wird erst freigegeben, wenn das echte PDF vorhanden ist.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buchprüfung öffnen</button>`}
-  else if(['print_ready','printing','printed','shipped'].includes(stage)){taskText='Die Buchdatei ist fertig. Ab hier geht es nur noch um Druck und Versand.';taskButton=`<button class="btn" onclick="go('print')">Druckbereich öffnen</button>`}
-  else {taskText='Dieser Auftrag ist abgeschlossen.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
-  const issues=failed;
-  main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button><div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div><div class="contact">${contactHtml(r)}</div>
-  <div class="taskbox"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
-  ${issues?`<div class="issuebox"><b>${issues} Problem${issues===1?'':'e'} erkannt</b><br>Fehlgeschlagene KI-Versuche werden im Bereich Geschichten angezeigt.</div>`:''}
-  <div class="section-title">Buch-Fortschritt</div><div class="phase-list">
-    ${phaseRow('1','Auftrag & Kundendaten','Formular, Kontakt und Personalisierung','✓',null,true,stage==='new')}
-    ${phaseRow('2','Story-Ideen',`${approved}/15 freigegeben · ${planned} offen`,approved===15?'fertig':`${approved}/15`,`production?id=${esc(r.id)}`,approved===15,stage==='story_plan')}
-    ${phaseRow('3','Geschichten',`${ready}/15 fertig${failed?' · '+failed+' Fehler':''}`,ready===15?'fertig':`${ready}/15`,`production?id=${esc(r.id)}`,ready===15,stage==='story_generation',approved<15)}
-    ${phaseRow('4','Figuren',charTotal?`${charApproved}/${charTotal} Referenzen freigegeben`:'Character Bible noch nicht erstellt',charTotal&&charApproved===charTotal?'fertig':charTotal?`${charApproved}/${charTotal}`:'offen',`characters?id=${esc(r.id)}`,charTotal>0&&charApproved===charTotal,stage==='characters',ready<15)}
-    ${phaseRow('5','Illustrationen',sceneTotal?`${selected}/${sceneTotal} Szenen ausgewählt · ${sceneStories}/15 Storys vorbereitet`:'Noch keine Bildszenen vorbereitet',sceneTotal&&selected===sceneTotal&&sceneStories===15?'fertig':sceneTotal?`${selected}/${sceneTotal}`:'offen',`illustrations?id=${esc(r.id)}`,sceneTotal>0&&selected===sceneTotal&&sceneStories===15,stage==='illustrations',ready<15||!charTotal||charApproved<charTotal)}
-    ${phaseRow('6','Fertiges Buch',r.book_pdf_storage_path?'Druck-PDF vorhanden':'Layout/PDF noch nicht erstellt',r.book_pdf_storage_path?'PDF fertig':'wartet',`book?id=${esc(r.id)}`,!!r.book_pdf_storage_path,stage==='book_review',selected!==sceneTotal||sceneStories<15)}
-  </div>
-  <div class="section-title">Kundendaten</div><details class="card"><summary><b>Details anzeigen</b> <span class="small">· nur wenn du sie brauchst</span></summary><div class="kv" style="margin-top:12px"><b>Alter</b><span>${esc(r.child_age)} Jahre</span><b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span><b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span><b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span><b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span><b>Moral</b><span>${esc(r.moral_or_message||'—')}</span></div><button class="btn soft" onclick="showContract()">Story Contract ansehen</button></details>`;
-  if($('#startPrep'))$('#startPrep').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(r.id,'story_plan');toast('Storyplanung ist geöffnet.','ok');go('production',{id:r.id})}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if(stage==='new'){
+    taskTitle='Auftrag vorbereiten';
+    taskText=hasContract?'Kundendaten sind geprüft. Als Nächstes werden die 15 Story-Ideen erstellt.':'Kundendaten sind angekommen. Story Contract und 15 Story-Ideen werden als nächster Produktionsschritt vorbereitet.';
+    taskButton=`<button class="btn" id="prepareOrder">${hasContract?'15 Story-Ideen erstellen':'Auftrag vorbereiten'}</button>`;
+  }else if(stage==='story_plan'){
+    taskTitle='Story-Ideen freigeben';taskText=`${approved}/15 sind freigegeben. Du musst nur Titel und Kurzinhalt prüfen.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Ideen prüfen</button>`;
+  }else if(stage==='story_generation'){
+    taskTitle=failed?'Fehler automatisch beheben':'Geschichten erstellen';taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">${failed?'Probleme öffnen':'Geschichten erstellen'}</button>`;
+  }else if(stage==='characters'){
+    taskTitle='Figuren festlegen';taskText=`${charApproved}/${charTotal||'–'} Figuren sind freigegeben. Erst danach entstehen die Story-Bilder.`;taskButton=`<button class="btn" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren prüfen</button>`;
+  }else if(stage==='illustrations'){
+    taskTitle='Illustrationen fertigstellen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Jede Geschichte bleibt separat.`;taskButton=`<button class="btn" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder bearbeiten</button>`;
+  }else if(stage==='book_review'){
+    taskTitle='Fertiges Buch prüfen';taskText=r.book_pdf_storage_path?'Das Druck-PDF ist fertig. Einmal ansehen und anschließend zum Druck freigeben.':'Texte und Bilder sind fertig. Jetzt wird daraus die endgültige Buchdatei.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buch öffnen</button>`;
+  }else if(['print_ready','printing','printed','shipped'].includes(stage)){
+    taskTitle=nextAction(r);taskText='Die Buchproduktion ist abgeschlossen. Dieser Auftrag liegt jetzt im Druck-/Versandbereich.';taskButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
+  }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
+
+  const storySummary=ready===15?'15/15 fertig':approved===15?`${ready}/15 fertig`:`${approved}/15 Ideen`;
+  const charSummary=charTotal?`${charApproved}/${charTotal} frei`:'noch offen';
+  const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
+  main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button>
+  <div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div>
+  <div class="contact">${contactHtml(r)}</div>${compactFlow(stage)}
+  <div class="bigstep"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
+  ${failed?`<div class="issuebox"><b>${failed} Problem${failed===1?'':'e'} erkannt</b><br>Nur diese Ausnahmen brauchen deine Aufmerksamkeit.</div>`:''}
+  <div class="simple-status"><div><b>${storySummary}</b><span>Geschichten</span></div><div><b>${charSummary}</b><span>Figuren</span></div><div><b>${imageSummary}</b><span>Illustrationen</span></div><div><b>${r.book_pdf_storage_path?'PDF fertig':'noch offen'}</b><span>Buch</span></div></div>
+  <div class="section-title">Details nur bei Bedarf</div>
+  <details class="overview-card"><summary><div class="row"><div><b>Kundendaten</b><div class="desc">Kontakt, Wünsche, Personalisierung</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="kv"><b>Alter</b><span>${esc(r.child_age)} Jahre</span><b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span><b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span><b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span><b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span><b>Moral</b><span>${esc(r.moral_or_message||'—')}</span></div>${hasContract?'<button class="btn soft" onclick="showContract()">Story Contract ansehen</button>':''}</div></details>
+  <details class="overview-card"><summary><div class="row"><div><b>Story-Ideen & Geschichten</b><div class="desc">${esc(storySummary)}${failed?' · '+failed+' Fehler':''}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('production',{id:'${esc(r.id)}'})">Story-Bereich öffnen</button></div></details>
+  <details class="overview-card"><summary><div class="row"><div><b>Figuren & Bilder</b><div class="desc">${esc(charSummary)} · ${esc(imageSummary)}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="actions"><button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren</button><button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder</button></div></div></details>
+  <details class="overview-card"><summary><div class="row"><div><b>Fertiges Buch</b><div class="desc">${r.book_pdf_storage_path?'Druck-PDF vorhanden':'Noch nicht erstellt'}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Buchbereich öffnen</button></div></details>`;
+  if($('#prepareOrder'))$('#prepareOrder').onclick=e=>prepareRealOrder(e.currentTarget);
+}
+async function prepareRealOrder(btn){
+  try{
+    busy(btn,true,'Auftrag wird vorbereitet …');
+    if(!S.request.metadata?.story_contract){await invoke('build-story-contract',{request_id:S.request.id});await loadRequest(S.request.id)}
+    if(!S.readiness)await loadReadiness();
+    if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){
+      toast('Kundendaten & Story Contract sind gespeichert. Für die 15 Story-Ideen fehlt noch die sichere KI-Verbindung.','err');
+      await loadRequest(S.request.id);requestView();return;
+    }
+    if(!S.request.metadata?.story_plan){await invoke('plan-request-stories',{request_id:S.request.id})}
+    await invoke('materialize-request-stories',{request_id:S.request.id});
+    await loadRequest(S.request.id);
+    await updateProductionStage(S.request.id,'story_plan');
+    toast('15 Story-Ideen sind vorbereitet.','ok');go('production',{id:S.request.id});
+  }catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadRequest(S.request.id);requestView()}finally{busy(btn,false)}
 }
 window.showContract=function(){
   const c=S.request?.metadata?.story_contract;
@@ -338,16 +383,21 @@ window.showContract=function(){
 
 function productionView(){
   shell(true);activeNav('dashboard');if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length,gen=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at)).length;
-  const stage=prodStage(S.request);$('#headerSub').textContent=stage==='story_plan'?'Story-Ideen':'Geschichten';
-  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">${stage==='story_plan'?'Story-Ideen freigeben':'Geschichten erstellen'}</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">${S.stories.length}/15</span></div>
-  <div class="summary-grid"><div class="summary-tile"><strong>${ap}/15</strong><span>Ideen freigegeben</span></div><div class="summary-tile"><strong>${rd}/15</strong><span>Geschichten fertig</span></div></div>
-  ${fail?`<div class="issuebox" style="margin-top:9px"><b>${fail} KI-Fehler</b><br>Diese Storys kannst du nach Einrichtung der KI erneut erzeugen.</div>`:''}
-  ${planned?`<div class="card"><b>Schnellfreigabe</b><div class="desc">Titel + Kurzinhalt prüfen. Nur bei Unsicherheit öffnest du die Details.</div><button class="btn ok" id="approveAll">Alle ${planned} offenen Ideen freigeben</button></div>`:''}
-  ${!planned&&rd<15?`<div class="card"><b>Story-Ideen sind freigegeben ✓</b><div class="desc">Jetzt können die fehlenden Geschichten erzeugt werden. Ziel je Story: 750–850 Wörter.</div><button class="btn" id="generateAll">Alle ${15-rd} fehlenden Geschichten erzeugen</button><div class="inline-note">Die automatische Qualitätsprüfung bauen wir später noch strenger aus. Aktuell werden echte Generatorfehler und Wortlänge sichtbar gemacht.</div></div>`:''}
-  <div class="section-title">15 Geschichten</div><div id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div><div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut erzeugen</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details</button></div></div>`}).join('')}</div>`;
+  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
+  const stage=prodStage(S.request),ideaMode=stage==='story_plan'||planned>0;$('#headerSub').textContent=ideaMode?'Story-Ideen':'Geschichten';
+  const problemItems=S.stories.filter(x=>x.status==='failed'||x.status==='needs_review');
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button>
+  <div class="row"><div><h2 style="margin-bottom:2px">${ideaMode?'Story-Ideen':'Geschichten'}</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">15</span></div>
+  <div class="simple-status"><div><b>${ap}/15</b><span>Ideen freigegeben</span></div><div><b>${rd}/15</b><span>Geschichten fertig</span></div></div>
+  ${fail?`<div class="issuebox"><b>${fail} Ausnahme${fail===1?'':'n'}</b><br>Nur diese Geschichten müssen geprüft oder erneut erzeugt werden.</div>`:''}
+  ${ideaMode&&planned?`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>15 Story-Ideen freigeben</h3><p>Prüfe nur Titel und Kurzinhalt. Einzelheiten bleiben eingeklappt.</p><button class="btn" id="approveAll">Alle ${planned} offenen Ideen freigeben</button></div>`:''}
+  ${!planned&&rd<15?`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>${fail?'Fehler beheben':'15 Geschichten erstellen'}</h3><p>Ziel: jede Geschichte 750–850 Wörter. Nach der Erstellung sollen künftig nur Qualitäts-Ausnahmen sichtbar werden.</p><button class="btn" id="generateAll">${fail?'Fehlende/fehlerhafte Geschichten erneut erzeugen':'Alle fehlenden Geschichten erzeugen'}</button></div>`:''}
+  ${rd===15?`<div class="okbox"><b>15/15 Geschichten fertig ✓</b><br>Du musst die Texte nicht alle lesen. Öffne Details nur bei Bedarf.</div><button class="btn" id="toChars">Weiter zu Figuren</button>`:''}
+  ${problemItems.length?`<div class="section-title">Nur Probleme</div>${problemItems.map(s=>`<div class="story-quick"><div class="row"><div><div class="story-title">${String(s.position).padStart(2,'0')} · ${esc(s.title)}</div><div class="desc">${esc(s.generation_error?.provider?.error||'Prüfung erforderlich')}</div></div><span class="pill red">${esc(statusLabel(s.status))}</span></div><button class="btn secondary" data-openstory="${s.id}">Problem öffnen</button></div>`).join('')}`:''}
+  <details class="overview-card" ${ideaMode&&planned?'open':''}><summary><div class="row"><div><b>${ideaMode?'15 Story-Ideen':'Alle 15 Geschichten'}</b><div class="desc">Nur öffnen, wenn du einzelne Inhalte ansehen oder ändern möchtest.</div></div><span class="chev">⌄</span></div></summary><div class="inside" id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div><div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details</button></div></div>`}).join('')}</div></details>`;
   if($('#approveAll'))$('#approveAll').onclick=approveAllPlanned;
   if($('#generateAll'))$('#generateAll').onclick=generateAllStories;
+  if($('#toChars'))$('#toChars').onclick=async()=>{await updateProductionStage(S.request.id,'characters');go('characters',{id:S.request.id})};
   document.querySelectorAll('[data-oneapprove]').forEach(b=>b.onclick=()=>approveOneQuick(Number(b.dataset.oneapprove),b));
   document.querySelectorAll('[data-openstory]').forEach(b=>b.onclick=()=>go('story',{id:b.dataset.openstory,request:S.request.id}));
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>{const st=S.stories.find(x=>x.id===b.dataset.retry);if(st)generateStory(st,b)});
@@ -495,24 +545,31 @@ async function selectVariant(id,b){
 }
 
 function printView(){
-  shell(true);activeNav('print');$('#headerSub').textContent='Druck';const items=S.requests.filter(r=>['print_ready','printing','printed','shipped'].includes(prodStage(r)));
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck & Versand</h2><div class="small">Nur fertige Buchdateien erscheinen hier.</div></div><span class="pill">${items.length}</span></div>${items.length?items.map(r=>{const st=prodStage(r);let action='';if(st==='print_ready')action=`<button class="btn" data-order="${r.id}">Druck bestellt</button>`;if(st==='printing')action=`<button class="btn ok" data-printed="${r.id}">✓ Buch ist gedruckt</button>`;if(st==='printed')action=`<button class="btn" data-ship="${r.id}">Als versendet markieren</button>`;if(st==='shipped')action=`<button class="btn ok" data-complete="${r.id}">✓ Auftrag abschließen</button>`;return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.customer_name)}</div><div class="contact">${contactHtml(r)}</div></div><span class="pill ${stageClass(st)}">${stageLabel(st)}</span></div><div class="kv" style="margin-top:10px"><b>Druckerei</b><span>${esc(r.print_provider||'—')}</span><b>Bestellnr.</b><span>${esc(r.print_order_number||'—')}</span>${r.shipping_tracking?`<b>Tracking</b><span>${esc(r.shipping_tracking)}</span>`:''}</div>${r.book_pdf_storage_path?`<button class="btn secondary" data-pdf="${r.id}">📄 Druck-PDF öffnen</button>`:''}${action}<button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></div>`}).join(''):'<div class="empty">Noch kein Buch ist druckbereit. Ein Auftrag erscheint hier erst nach der finalen Buch-/PDF-Freigabe.</div>'}`;
-  document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=async()=>{const r=S.requests.find(x=>x.id===b.dataset.pdf);try{busy(b,true,'PDF wird geöffnet …');await openPrivatePdf(r?.book_pdf_storage_path)}catch(e){toast(e.message,'err')}finally{busy(b,false)}});document.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>printOrderSheet(b.dataset.order));document.querySelectorAll('[data-printed]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.printed,'printed');toast('Als gedruckt markiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});document.querySelectorAll('[data-ship]').forEach(b=>b.onclick=()=>shippingSheet(b.dataset.ship));document.querySelectorAll('[data-complete]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.complete,'completed');toast('Auftrag abgeschlossen.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>go('request',{id:b.dataset.openreq}));
+  shell(true);activeNav('print');$('#headerSub').textContent='Druck';const items=S.requests.filter(r=>!isDemo(r)&&['print_ready','printing','printed','shipped'].includes(prodStage(r)));
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck</h2><div class="small">Hier liegen nur Bücher, deren PDF bereits freigegeben ist.</div></div><span class="pill">${items.length}</span></div>
+  ${items.length?items.map(r=>{const st=prodStage(r);let action='';if(st==='print_ready')action=`<button class="btn" data-order="${r.id}">Druck bestellt →</button>`;if(st==='printing')action=`<button class="btn ok" data-printed="${r.id}">✓ Buch ist angekommen / gedruckt</button>`;if(st==='printed')action=`<button class="btn" data-ship="${r.id}">Als versendet markieren</button>`;if(st==='shipped')action=`<button class="btn ok" data-complete="${r.id}">✓ Auftrag abschließen</button>`;return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)}</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(st)}">${stageLabel(st)}</span></div>${r.book_pdf_storage_path?`<button class="btn secondary" data-pdf="${r.id}">📄 Druck-PDF öffnen</button>`:''}${action}<details style="margin-top:8px"><summary class="small" style="cursor:pointer">Druckdetails anzeigen</summary><div class="kv" style="margin-top:9px"><b>Druckerei</b><span>${esc(r.print_provider||'—')}</span><b>Bestellnr.</b><span>${esc(r.print_order_number||'—')}</span>${r.shipping_tracking?`<b>Tracking</b><span>${esc(r.shipping_tracking)}</span>`:''}</div><button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></details></div>`}).join(''):'<div class="empty">Noch kein Buch ist druckbereit.</div>'}`;
+  document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=async()=>{const r=S.requests.find(x=>x.id===b.dataset.pdf);try{busy(b,true,'PDF wird geöffnet …');await openPrivatePdf(r?.book_pdf_storage_path)}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  document.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>printOrderSheet(b.dataset.order));
+  document.querySelectorAll('[data-printed]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.printed,'printed');toast('Als gedruckt markiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  document.querySelectorAll('[data-ship]').forEach(b=>b.onclick=()=>shippingSheet(b.dataset.ship));
+  document.querySelectorAll('[data-complete]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.complete,'completed');toast('Auftrag abgeschlossen.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
+  document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>go('request',{id:b.dataset.openreq}));
 }
 function printOrderSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML=`<div class="row"><h2>Druck bestellt</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div><label>Druckerei</label><input id="printProvider" value="${esc(r?.print_provider||'')}" placeholder="z. B. Online-Druckerei"><label>Bestellnummer</label><input id="printOrder" value="${esc(r?.print_order_number||'')}" placeholder="optional"><button class="btn" id="savePrint">Speichern → Im Druck</button>`;modal.classList.add('open');$('#savePrint').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(id,'printing',{print_provider:$('#printProvider').value.trim()||null,print_order_number:$('#printOrder').value.trim()||null});closeModal();toast('Auftrag ist jetzt im Druck.','ok');printView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}}
 function shippingSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML=`<div class="row"><h2>Versand</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div><label>Trackingnummer</label><input id="tracking" value="${esc(r?.shipping_tracking||'')}" placeholder="optional"><button class="btn" id="saveShip">Als versendet markieren</button>`;modal.classList.add('open');$('#saveShip').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(id,'shipped',{shipping_tracking:$('#tracking').value.trim()||null});closeModal();toast('Versand gespeichert.','ok');printView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}}
 
 async function settingsView(){
-  shell(true);activeNav('settings');$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
-  const x=S.readiness||{}, f=x.test_fixture||{};
-  main.innerHTML=`<h2>Einstellungen</h2>
-  <div class="section-title">KI & System</div><div class="card">
-   ${statusLine('Angemeldet',!!S.session)}${statusLine('Admin-Zugriff',x.admin_access!==false)}${statusLine('OpenAI API-Key',!!x.openai_api_key_configured)}${statusLine('Zero Data Retention',!!x.openai_zdr_confirmed)}
-  </div>
-  ${!x.openai_api_key_configured?'<div class="rule warn"><b>KI-Erstellung ist derzeit gesperrt.</b><br>Der OpenAI API-Key fehlt noch. Story-Freigaben funktionieren trotzdem.</div>':''}
-  <div class="card kv"><b>Story-Modell</b><span>${esc(x.story_model||'—')}</span><b>Bild-Modell</b><span>${esc(x.image_model||'—')}</span><b>Testauftrag</b><span>${f.present?'vorhanden':'—'}</span></div>
-  <div class="section-title">Passwort</div><div class="card"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div>`;
-  $('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}
+  shell(true);$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
+  const x=S.readiness||{},aiKey=!!x.openai_api_key_configured,zdr=!!x.openai_zdr_confirmed,aiReady=aiKey&&zdr;
+  main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Aufträge</button><h2>Einstellungen</h2>
+  <div class="section-title">KI-Verbindung</div><div class="card">${statusLine('OpenAI API-Key',aiKey)}${statusLine('Zero Data Retention',zdr)}${statusLine('KI-Produktion',aiReady)}</div>
+  ${!aiReady?`<div class="rule warn"><b>Für echte Kinderdaten bleibt die KI bewusst gesperrt.</b><br>${!aiKey?'1. OPENAI_API_KEY als Supabase Edge-Function-Secret hinterlegen.<br>':''}${!zdr?'2. Erst wenn Zero Data Retention bei OpenAI wirklich aktiviert ist, OPENAI_ZDR_CONFIRMED=true setzen.':''}</div>`:'<div class="rule ok"><b>KI ist bereit.</b><br>Storyplanung, Geschichten und Bilder können über den normalen Auftrag erzeugt werden.</div>'}
+  <button class="btn secondary" id="refreshAI">Status neu prüfen</button>
+  <div class="section-title">Kundenformular</div><div class="card"><b>Live-Testformular</b><div class="desc">Neue Formulareingaben erscheinen automatisch als neuer Auftrag.</div><button class="btn secondary" id="settingsForm">Formular öffnen ↗</button></div>
+  <div class="section-title">Passwort</div><details class="overview-card"><summary><div class="row"><b>Passwort ändern</b><span class="chev">⌄</span></div></summary><div class="inside"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div></details>`;
+  $('#refreshAI').onclick=async e=>{try{busy(e.currentTarget,true,'Prüfen …');S.readiness=null;await loadReadiness();toast('KI-Status aktualisiert.','ok');settingsView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=1','_blank');
+  if($('#changePass'))$('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 function statusLine(name,ok){return `<div class="statusline"><b>${esc(name)}</b><span class="${ok?'yes':'no'}">${ok?'✓ bereit':'✕ fehlt'}</span></div>`}
 
@@ -539,6 +596,7 @@ async function render(){
 }
 window.addEventListener('hashchange',render);
 document.querySelectorAll('[data-route]').forEach(b=>b.onclick=()=>go(b.dataset.route));
+$('#settingsBtn').onclick=()=>go('settings');
 $('#logoutBtn').onclick=logout;
 $('#refreshBtn').onclick=async()=>{try{await loadRequests();if(S.request)await loadRequest(S.request.id);S.readiness=null;await render();toast('Aktualisiert.','ok')}catch(e){toast(e.message,'err')}};
 

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173957">
+<meta name="robots" content="noindex,nofollow">
+<title>Story4Kids – Dein persönliches Kinderbuch</title>
+<style>
+:root {
+  --navy:#173957;
+  --navy2:#224e72;
+  --cream:#fffaf0;
+  --paper:#ffffff;
+  --sand:#f7ead0;
+  --gold:#f3be3e;
+  --pink:#f06a83;
+  --blue:#55afd2;
+  --ink:#203041;
+  --muted:#6d7680;
+  --line:#e8dfd1;
+  --ok:#15795a;
+  --danger:#a04444;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#f0f3f5;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:0 auto;background:var(--cream);min-height:100vh}
+header{padding:20px 18px 18px;background:var(--navy);color:white}
+.brand{display:flex;align-items:center;gap:13px}
+.logo-text{display:grid;place-items:center;background:#173957;color:#fff;font-weight:900;font-size:20px;letter-spacing:-1px;}
+.logo{width:58px;height:58px;border-radius:50%;object-fit:cover;background:#fff}
+.brand-title{font-size:23px;font-weight:850;letter-spacing:.1px}
+.brand-sub{font-size:13px;opacity:.78;margin-top:3px}
+.hero{padding:26px 20px 18px;background:linear-gradient(160deg,#fffdf8 0%,#f8ecd4 100%);border-bottom:1px solid var(--line)}
+.hero h1{font-size:34px;line-height:1.05;margin:0 0 12px;color:var(--navy)}
+.hero p{font-size:16px;line-height:1.52;margin:7px 0}
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.pill{padding:7px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px;font-weight:750}
+main{padding:18px 16px 48px}
+.section{background:var(--paper);border:1px solid var(--line);border-radius:22px;margin:0 0 16px;overflow:hidden;box-shadow:0 6px 20px #273b4c0a}
+.section-head{padding:17px 17px 12px;border-bottom:1px solid #f1ece4}
+.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#81786b;font-weight:850}
+.section h2{font-size:22px;margin:5px 0 5px;color:var(--navy)}
+.section-head p{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
+.body{padding:15px 17px 18px}
+.field{margin:0 0 16px}
+label{display:block;font-size:14px;font-weight:760;margin:0 0 7px}
+.help{display:block;font-size:12px;color:var(--muted);font-weight:450;line-height:1.35;margin-top:3px}
+.req{color:#c94c4c}
+input,textarea,select{width:100%;border:1px solid #d9d4cc;border-radius:13px;padding:13px 12px;font:inherit;color:var(--ink);background:#fff;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #55afd222}
+textarea{min-height:94px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.checkitem,.radioitem{position:relative}
+.checkitem input,.radioitem input{position:absolute;opacity:0;pointer-events:none}
+.checkitem label,.radioitem label{display:block;margin:0;padding:12px 11px;border:1px solid #d9d4cc;border-radius:13px;background:#fff;font-size:13px;font-weight:650;cursor:pointer}
+.checkitem input:checked+label,.radioitem input:checked+label{border-color:var(--navy);background:#eef5fa;color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)}
+.stylegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stylecard input{position:absolute;opacity:0}
+.stylecard label{display:block;height:100%;border:1px solid #d9d4cc;border-radius:15px;padding:13px;background:#fff}
+.stylecard input:checked+label{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy);background:#f2f7fb}
+.stylecard b{display:block;color:var(--navy);font-size:14px;margin-bottom:4px}
+.stylecard small{display:block;color:var(--muted);line-height:1.35}
+.info{padding:12px 13px;border-radius:14px;background:#edf6f2;border:1px solid #d5ebe2;font-size:12px;line-height:1.45;color:#2e5d4d;margin:10px 0 0}
+.warn{padding:12px 13px;border-radius:14px;background:#fff7e7;border:1px solid #efdcb8;font-size:12px;line-height:1.45;color:#725526}
+.hidden-hp{position:absolute!important;left:-9999px!important;opacity:0!important;height:1px!important;width:1px!important}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45}
+.consent input{width:21px;height:21px;flex:0 0 21px;margin-top:1px}
+.summary{padding:14px;border-radius:14px;background:#f6f8fa;border:1px solid #e0e5e9;font-size:13px;line-height:1.5}
+button{width:100%;border:0;border-radius:16px;background:var(--navy);color:white;font:inherit;font-weight:820;padding:16px 18px;cursor:pointer;box-shadow:0 6px 16px #17395722}
+button:disabled{opacity:.55;cursor:not-allowed}
+#status{margin-top:12px;padding:12px;border-radius:13px;display:none;font-size:13px;line-height:1.4}
+#status.ok{display:block;background:#e9f6f0;color:#17654d;border:1px solid #cce8dd}
+#status.err{display:block;background:#fff0f0;color:#8c3d3d;border:1px solid #efd0d0}
+footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-align:center}
+@media(max-width:520px){.grid2,.checkgrid,.stylegrid{grid-template-columns:1fr} .hero h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <div class='logo logo-text' aria-label='Story4Kids'>S4K</div>
+    <div><div class="brand-title">Story4Kids</div><div class="brand-sub">Dein Kind wird zum Helden seiner eigenen Geschichten</div></div>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Erzähl uns, was dein Kind einzigartig macht.</h1>
+  <p>Aus deinen Angaben entstehen <strong>15 persönliche Geschichten</strong> mit wiederkehrenden Figuren, vertrauten Details und 2–3 passenden Illustrationen pro Geschichte.</p>
+  <p>Du musst nichts „perfekt“ formulieren. Ein paar echte Details reichen – wir machen daraus später das präzise Story-Briefing.</p>
+  <div class="pills">
+    <span class="pill">15 Geschichten</span><span class="pill">30–45 Illustrationen</span><span class="pill">gleiche Figuren</span><span class="pill">persönliche Details</span>
+  </div>
+</section>
+
+<main>
+<div class="warn"><b>Interner Live-Test.</b> Dieses Formular ist noch nicht für öffentliche Werbung freigegeben. Bitte derzeit nur selbst testen.</div>
+<form id="storyForm">
+
+<section class="section">
+  <div class="section-head"><div class="kicker">1 · Kontakt</div><h2>Damit wir dich erreichen können</h2><p>Diese Angaben werden nicht in den Geschichten verwendet.</p></div>
+  <div class="body">
+    <div class="grid2">
+      <div class="field"><label>Dein Name <span class="req">*</span></label><input name="customer_name" autocomplete="name" required placeholder="z. B. Laura Muster"></div>
+      <div class="field"><label>E-Mail <span class="req">*</span></label><input type="email" name="customer_email" autocomplete="email" required placeholder="laura@beispiel.at"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Telefonnummer <span class="help">Optional.</span></label><input name="customer_phone" autocomplete="tel" placeholder="+43 …"></div>
+      <div class="field"><label>Instagram-Name <span class="help">Optional.</span></label><input name="customer_instagram" maxlength="100" placeholder="@deinname"></div>
+    </div>
+    <div class="field"><label>Wie dürfen wir dich am besten kontaktieren? <span class="help">Optional.</span></label>
+      <select name="preferred_contact">
+        <option value="">Egal / keine Präferenz</option>
+        <option value="E-Mail">E-Mail</option>
+        <option value="Telefon">Telefon</option>
+        <option value="Instagram">Instagram</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">2 · Hauptfigur</div><h2>Wer ist dein Kind?</h2><p>Wir brauchen nur den Vornamen und Dinge, die für die Geschichte wirklich wichtig sind.</p></div>
+  <div class="body">
+    <div class="grid2">
+      <div class="field"><label>Vorname des Kindes <span class="req">*</span></label><input name="child_first_name" required maxlength="80" placeholder="z. B. Emma"></div>
+      <div class="field"><label>Alter <span class="req">*</span></label><select name="child_age" required><option value="">Bitte wählen</option><option value="2">2 Jahre</option><option value="3">3 Jahre</option><option value="4">4 Jahre</option><option value="5">5 Jahre</option><option value="6">6 Jahre</option><option value="7">7 Jahre</option><option value="8">8 Jahre</option><option value="9">9 Jahre</option><option value="10">10 Jahre</option><option value="11">11 Jahre</option><option value="12">12 Jahre</option><option value="13">13 Jahre</option><option value="14">14 Jahre</option></select></div>
+    </div>
+    <div class="field"><label>Wie sollen wir über das Kind schreiben? <span class="help">Optional. Wenn nichts gewählt wird, verwenden wir möglichst oft den Namen.</span></label>
+      <div class="checkgrid">
+        <div class="radioitem"><input type="radio" id="pro_sie" name="pronouns" value="sie/ihr"><label for="pro_sie">sie / ihr</label></div>
+        <div class="radioitem"><input type="radio" id="pro_er" name="pronouns" value="er/ihm"><label for="pro_er">er / ihm</label></div>
+        <div class="radioitem"><input type="radio" id="pro_name" name="pronouns" value="möglichst Name verwenden"><label for="pro_name">möglichst den Namen</label></div>
+        <div class="radioitem"><input type="radio" id="pro_other" name="pronouns" value="anders / individuell"><label for="pro_other">anders / individuell</label></div>
+      </div>
+    </div>
+    <div class="field"><label>Ort oder Region <span class="help">Optional. Bitte keine genaue Adresse. Ein Ort wie „Salzburg“ oder „Wörthersee“ reicht.</span></label><input name="location_region" maxlength="140" placeholder="z. B. Salzburg, Kärnten, Wörthersee"></div>
+    <div class="field"><label>Welche Eigenschaften passen besonders gut?</label>
+      <div class="checkgrid">
+        <div class="checkitem"><input type="checkbox" id="trait0" name="child_traits" value="neugierig"><label for="trait0">neugierig</label></div><div class="checkitem"><input type="checkbox" id="trait1" name="child_traits" value="mutig"><label for="trait1">mutig</label></div><div class="checkitem"><input type="checkbox" id="trait2" name="child_traits" value="lustig"><label for="trait2">lustig</label></div><div class="checkitem"><input type="checkbox" id="trait3" name="child_traits" value="liebevoll"><label for="trait3">liebevoll</label></div><div class="checkitem"><input type="checkbox" id="trait4" name="child_traits" value="ruhig"><label for="trait4">ruhig</label></div><div class="checkitem"><input type="checkbox" id="trait5" name="child_traits" value="wild & energiegeladen"><label for="trait5">wild & energiegeladen</label></div><div class="checkitem"><input type="checkbox" id="trait6" name="child_traits" value="kreativ"><label for="trait6">kreativ</label></div><div class="checkitem"><input type="checkbox" id="trait7" name="child_traits" value="hilfsbereit"><label for="trait7">hilfsbereit</label></div><div class="checkitem"><input type="checkbox" id="trait8" name="child_traits" value="sensibel"><label for="trait8">sensibel</label></div><div class="checkitem"><input type="checkbox" id="trait9" name="child_traits" value="abenteuerlustig"><label for="trait9">abenteuerlustig</label></div>
+      </div>
+    </div>
+    <div class="field"><label>Was macht dein Kind unverwechselbar? <span class="help">Eigenheiten, typische Reaktionen, kleine Besonderheiten.</span></label><textarea name="personality_notes" placeholder="z. B. beobachtet erst alles ganz genau, stellt tausend Fragen und hilft sofort, wenn jemand traurig ist."></textarea></div>
+    <div class="field"><label>Typischer Satz, Ausdruck oder Gewohnheit <span class="help">Optional – solche Details machen Geschichten besonders persönlich.</span></label><textarea name="catchphrases_or_habits" placeholder="z. B. sagt oft „Das schaff ich schon!“ und nimmt überall seinen kleinen roten Rucksack mit."></textarea></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">3 · Lieblingswelt</div><h2>Was liebt dein Kind?</h2><p>Diese Angaben liefern uns Stoff für 15 unterschiedliche Geschichten.</p></div>
+  <div class="body">
+    <div class="field"><label>Interessen & Hobbys <span class="req">*</span></label>
+      <div class="checkgrid">
+        <div class="checkitem"><input type="checkbox" id="int0" name="interests" value="Tiere"><label for="int0">Tiere</label></div><div class="checkitem"><input type="checkbox" id="int1" name="interests" value="Pferde"><label for="int1">Pferde</label></div><div class="checkitem"><input type="checkbox" id="int2" name="interests" value="Dinosaurier"><label for="int2">Dinosaurier</label></div><div class="checkitem"><input type="checkbox" id="int3" name="interests" value="Fußball & Sport"><label for="int3">Fußball & Sport</label></div><div class="checkitem"><input type="checkbox" id="int4" name="interests" value="Fahrzeuge"><label for="int4">Fahrzeuge</label></div><div class="checkitem"><input type="checkbox" id="int5" name="interests" value="Weltraum & Sterne"><label for="int5">Weltraum & Sterne</label></div><div class="checkitem"><input type="checkbox" id="int6" name="interests" value="Natur & Wald"><label for="int6">Natur & Wald</label></div><div class="checkitem"><input type="checkbox" id="int7" name="interests" value="Basteln & Malen"><label for="int7">Basteln & Malen</label></div><div class="checkitem"><input type="checkbox" id="int8" name="interests" value="Musik & Tanzen"><label for="int8">Musik & Tanzen</label></div><div class="checkitem"><input type="checkbox" id="int9" name="interests" value="Rätsel & Entdecken"><label for="int9">Rätsel & Entdecken</label></div><div class="checkitem"><input type="checkbox" id="int10" name="interests" value="Kochen & Backen"><label for="int10">Kochen & Backen</label></div><div class="checkitem"><input type="checkbox" id="int11" name="interests" value="Meer & Wasser"><label for="int11">Meer & Wasser</label></div>
+      </div>
+      <input style="margin-top:10px" name="interests_other" placeholder="Weitere Interessen, z. B. Feuerwehr, Züge, Feen, Technik …">
+    </div>
+    <div class="field"><label>Lieblingsorte <span class="help">Bis zu 4 Orte – real oder allgemein.</span></label><input name="favorite_places_text" placeholder="z. B. Omas Küche, Reitstall, Spielplatz, Wörthersee"></div>
+    <div class="grid2">
+      <div class="field"><label>Lieblingsessen</label><input name="favorite_food" placeholder="z. B. Erdbeeren, Kaiserschmarrn"></div>
+      <div class="field"><label>Lieblingstier / Haustier</label><input name="favorite_animal" placeholder="z. B. Hund Flocki"></div>
+    </div>
+    <div class="field"><label>Lieblingskuscheltier oder besonderer Gegenstand</label><input name="favorite_toy" placeholder="z. B. Hase Hopsi, roter Rucksack, Lieblingsdecke"></div>
+    <div class="field"><label>Eine schöne Erinnerung oder ein besonderes Erlebnis <span class="help">Optional. Daraus kann eine besonders persönliche Geschichte entstehen.</span></label><textarea name="special_memory" placeholder="z. B. erster Reitkurs, Urlaub am See, mit Oma Weihnachtskekse backen …"></textarea></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">4 · Menschen & Tiere</div><h2>Wer gehört zu seiner Welt?</h2><p>Familienkonstellationen sind unterschiedlich – deshalb fragen wir bewusst offen.</p></div>
+  <div class="body">
+    <div class="field"><label>Welche wichtigen Personen dürfen vorkommen? <span class="help">Name + Beziehung + 1–2 Eigenschaften reichen. Bitte nur Personen nennen, die im Buch vorkommen dürfen.</span></label><textarea name="important_people" placeholder="z. B. Oma Helga – backt gern und ist sehr herzlich; Papa Tom – macht viele Witze; Freundin Mia – mutig und neugierig."></textarea></div>
+    <div class="field"><label>Wie häufig sollen echte Bezugspersonen vorkommen?</label>
+      <select name="family_in_story">
+        <option value="nur wenn es zur Geschichte passt">Nur wenn es zur Geschichte passt</option>
+        <option value="regelmäßig in mehreren Geschichten">Regelmäßig in mehreren Geschichten</option>
+        <option value="möglichst oft">Möglichst oft</option>
+        <option value="lieber selten">Lieber selten</option>
+      </select>
+    </div>
+    <div class="warn">Wir fragen bewusst nicht nach Nachnamen, Schule oder genauer Wohnadresse. Für ein gutes Kinderbuch brauchen wir diese Daten nicht.</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">5 · Aussehen</div><h2>Damit die Figuren gleich bleiben</h2><p>Diese Angaben werden später in eine feste Character Bible übernommen und bei jeder Illustration wiederverwendet.</p></div>
+  <div class="body">
+    <div class="grid2">
+      <div class="field"><label>Haare</label><input name="child_hair" placeholder="z. B. braun, lockig, schulterlang"></div>
+      <div class="field"><label>Augen</label><input name="child_eyes" placeholder="z. B. grün"></div>
+    </div>
+    <div class="field"><label>Besondere Merkmale</label><input name="child_features" placeholder="z. B. Sommersprossen, Brille, Zahnlücke"></div>
+    <div class="field"><label>Typische Kleidung / Accessoire</label><input name="child_clothing" placeholder="z. B. gelber Pullover, Jeans, roter Rucksack"></div>
+    <div class="field"><label>Aussehen wichtiger Personen <span class="help">Nur wenn sie auch in Bildern vorkommen sollen.</span></label><textarea name="important_people_appearance" placeholder="z. B. Oma Helga: kurze graue Haare, runde Brille, blaue Strickjacke."></textarea></div>
+    <div class="field"><label>Aussehen des Haustiers / Lieblingstiers</label><input name="pet_appearance" placeholder="z. B. Flocki: kleiner weiß-brauner Mischling mit einem dunklen Ohr"></div>
+    <div class="info"><strong>Character-Consistency:</strong> In der Produktion wird zuerst ein festes Referenzbild/Character Sheet freigegeben. Dieses dient anschließend als Referenz für die weiteren Szenenbilder.</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">6 · Geschichten</div><h2>Wie sollen sich die 15 Geschichten anfühlen?</h2><p>Wir mischen die Wünsche so, dass nicht jede Geschichte gleich aufgebaut ist.</p></div>
+  <div class="body">
+    <div class="field"><label>Welche Stimmungen passen?</label>
+      <div class="checkgrid">
+        <div class="checkitem"><input type="checkbox" id="mood0" name="story_moods" value="abenteuerlich"><label for="mood0">abenteuerlich</label></div><div class="checkitem"><input type="checkbox" id="mood1" name="story_moods" value="warm & geborgen"><label for="mood1">warm & geborgen</label></div><div class="checkitem"><input type="checkbox" id="mood2" name="story_moods" value="lustig"><label for="mood2">lustig</label></div><div class="checkitem"><input type="checkbox" id="mood3" name="story_moods" value="magisch"><label for="mood3">magisch</label></div><div class="checkitem"><input type="checkbox" id="mood4" name="story_moods" value="alltagsnah"><label for="mood4">alltagsnah</label></div><div class="checkitem"><input type="checkbox" id="mood5" name="story_moods" value="fantasievoll"><label for="mood5">fantasievoll</label></div><div class="checkitem"><input type="checkbox" id="mood6" name="story_moods" value="spannend, aber nicht gruselig"><label for="mood6">spannend, aber nicht gruselig</label></div><div class="checkitem"><input type="checkbox" id="mood7" name="story_moods" value="ruhig & emotional"><label for="mood7">ruhig & emotional</label></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Fantasie-Anteil</label><select name="fantasy_level"><option>ausgewogen: echte Welt + Magie</option><option>eher realistisch & alltagsnah</option><option>deutlich fantasievoll & magisch</option></select></div>
+      <div class="field"><label>Abenteuer-Level</label><select name="adventure_level"><option>mittel – spannend, aber sicher</option><option>sanft & ruhig</option><option>viel Abenteuer</option></select></div>
+    </div>
+    <div class="field"><label>Humor</label><select name="humor_level"><option>natürlich & gelegentlich lustig</option><option>sehr humorvoll</option><option>eher wenig Humor</option></select></div>
+    <div class="field"><label>Themen, Motive oder Welten <span class="help">Bitte lieber allgemeine Motive statt konkreter bekannter Film-/Comicfiguren.</span></label><textarea name="theme" placeholder="z. B. Abenteuer, Pferde, Weltraum, Piraten, Zauberwald, Rätsel, Tiere …"></textarea></div>
+    <div class="field"><label>Lieblingswelten oder Motive</label><input name="favorite_worlds" placeholder="z. B. Drachen, Rennwagen, Prinzessinnenschloss, Dinosaurierwelt"></div>
+    <div class="field"><label>Was soll das Kind aus den Geschichten mitnehmen?</label><textarea name="moral_or_message" placeholder="z. B. sich selbst vertrauen, Hilfe annehmen dürfen, Freundschaft, Umgang mit Fehlern …"></textarea></div>
+    <div class="field"><label>Was darf über mehrere Geschichten wiederkehren?</label><textarea name="recurring_elements" placeholder="z. B. der rote Rucksack, Hund Flocki, Omas Küche, ein bestimmter Witz, ein geheimer Baum …"></textarea></div>
+    <div class="field"><label>Was soll unbedingt vorkommen?</label><textarea name="must_include" placeholder="Wünsche, besondere Orte, Situationen oder kleine Insider, die wir möglichst einbauen sollen."></textarea></div>
+    <div class="field"><label>Was soll NICHT vorkommen? <span class="req">*</span><span class="help">Ängste, sensible Themen, Tiere oder Situationen, die vermieden werden sollen. Wenn es nichts gibt, bitte „nichts Besonderes“ schreiben.</span></label><textarea name="must_avoid" required placeholder="z. B. keine Spinnen, nichts stark Gruseliges, kein Alleinsein im Dunkeln"></textarea></div>
+    <div class="field"><label>Sonstige Wünsche an die Geschichten</label><textarea name="story_wishes" placeholder="Alles, was wir noch wissen sollten – gern in Stichpunkten."></textarea></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">7 · Anlass & Widmung</div><h2>Für wen und wofür ist das Buch?</h2></div>
+  <div class="body">
+    <div class="field"><label>Besonderer Anlass</label><input name="occasion" placeholder="z. B. Geburtstag, Weihnachten, Schulanfang – oder einfach so"></div>
+    <div class="field"><label>Persönliche Widmung</label><textarea name="dedication" placeholder="z. B. Für unsere liebe Emma – bleib immer so neugierig und wunderbar."></textarea></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">8 · Bildstil</div><h2>Wie soll das Buch aussehen?</h2><p>Die gleiche Stilvorgabe gilt anschließend für das komplette Buch.</p></div>
+  <div class="body">
+    <div class="stylegrid">
+      <div class="stylecard"><input id="style1" type="radio" name="visual_style" value="warm, weich, hochwertig malerischer moderner Kinderbuchstil" checked><label for="style1"><b>Warm & malerisch</b><small>Weiche Formen, liebevolle Details, hochwertige Kinderbuch-Illustration.</small></label></div>
+      <div class="stylecard"><input id="style2" type="radio" name="visual_style" value="modern, klar, farbenfroh, hochwertiger digitaler Kinderbuchstil"><label for="style2"><b>Modern & farbenfroh</b><small>Klarer, lebendiger Look mit kräftigeren Farben.</small></label></div>
+      <div class="stylecard"><input id="style3" type="radio" name="visual_style" value="sanftes Aquarell, warm, poetischer hochwertiger Kinderbuchstil"><label for="style3"><b>Sanftes Aquarell</b><small>Ruhig, weich und etwas klassischer.</small></label></div>
+      <div class="stylecard"><input id="style4" type="radio" name="visual_style" value="verspielter hochwertiger 3D-Animationslook für Kinderbuch, weich und freundlich"><label for="style4"><b>Verspielt & plastisch</b><small>Mehr Tiefe und 3D-Gefühl, trotzdem kinderbuchhaft.</small></label></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div class="kicker">9 · Abschluss</div><h2>Fast geschafft</h2></div>
+  <div class="body">
+    <div class="summary"><strong>Was passiert danach?</strong><br>Deine Angaben landen bei Story4Kids. Wir prüfen sie zuerst. Danach wird ein verbindliches Figuren- und Story-Briefing erstellt, bevor Texte oder Bilder generiert werden.</div>
+    <div class="field hidden-hp"><label>Website</label><input name="website" autocomplete="off" tabindex="-1"></div>
+    <input type="hidden" name="language" value="de-AT">
+    <input type="hidden" name="length_preset" value="medium">
+    <input type="hidden" name="privacy_version" value="story4kids-v2-2026-08">
+    <div class="field" style="margin-top:16px">
+      <label class="consent"><input type="checkbox" name="privacy_accepted" required><span>Ich bestätige, dass ich die genannten Angaben für die Erstellung des personalisierten Kinderbuchs übermitteln darf und die Datenschutzhinweise gelesen habe. <span class="req">*</span></span></label>
+    </div>
+    <button id="submitBtn" type="submit">Angaben an Story4Kids senden</button>
+    <div id="status"></div>
+  </div>
+</section>
+
+</form>
+</main>
+<footer>Story4Kids · Personalisierte Kinderbücher<br>Hinweis: Diese Vorschau enthält noch keinen finalen Impressums-/Datenschutz-Link. Diese Links werden vor Veröffentlichung ergänzt.</footer>
+</div>
+
+<script>
+const ENDPOINT = "https://ctmtvaqryxgxbasaxbzw.supabase.co/functions/v1/submit-story-request";
+const APIKEY = "sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29";
+
+const form = document.getElementById("storyForm");
+const statusEl = document.getElementById("status");
+const submitBtn = document.getElementById("submitBtn");
+
+function vals(name) {
+  return [...document.querySelectorAll(`[name="${name}"]:checked`)].map(x => x.value);
+}
+function val(name) {
+  const el = document.querySelector(`[name="${name}"]`);
+  return el ? el.value.trim() : "";
+}
+function splitPlaces(text) {
+  return text.split(/[,;\n]/).map(x => x.trim()).filter(Boolean).slice(0,8);
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  statusEl.className = "";
+  statusEl.style.display = "none";
+
+  const interests = vals("interests");
+  const other = val("interests_other");
+  if (other) interests.push(...other.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean));
+
+  if (!interests.length) {
+    statusEl.textContent = "Bitte gib mindestens ein Interesse oder Hobby an.";
+    statusEl.className = "err";
+    statusEl.style.display = "block";
+    statusEl.scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
+
+  const payload = {
+    customer_name: val("customer_name"),
+    customer_email: val("customer_email"),
+    customer_phone: val("customer_phone"),
+    customer_instagram: val("customer_instagram"),
+    preferred_contact: val("preferred_contact"),
+    child_first_name: val("child_first_name"),
+    child_age: Number(val("child_age")),
+    pronouns: document.querySelector('[name="pronouns"]:checked')?.value || "",
+    location_region: val("location_region"),
+    child_traits: vals("child_traits"),
+    personality_notes: val("personality_notes"),
+    catchphrases_or_habits: val("catchphrases_or_habits"),
+    interests,
+    favorite_places: splitPlaces(val("favorite_places_text")),
+    favorite_food: val("favorite_food"),
+    favorite_animal: val("favorite_animal"),
+    favorite_toy: val("favorite_toy"),
+    special_memory: val("special_memory"),
+    important_people: val("important_people"),
+    family_in_story: val("family_in_story"),
+    child_hair: val("child_hair"),
+    child_eyes: val("child_eyes"),
+    child_features: val("child_features"),
+    child_clothing: val("child_clothing"),
+    important_people_appearance: val("important_people_appearance"),
+    pet_appearance: val("pet_appearance"),
+    story_moods: vals("story_moods"),
+    fantasy_level: val("fantasy_level"),
+    adventure_level: val("adventure_level"),
+    humor_level: val("humor_level"),
+    theme: val("theme"),
+    favorite_worlds: val("favorite_worlds"),
+    moral_or_message: val("moral_or_message"),
+    recurring_elements: val("recurring_elements"),
+    must_include: val("must_include"),
+    must_avoid: val("must_avoid"),
+    story_wishes: val("story_wishes"),
+    occasion: val("occasion"),
+    dedication: val("dedication"),
+    visual_style: document.querySelector('[name="visual_style"]:checked')?.value || "",
+    language: "de-AT",
+    length_preset: "medium",
+    privacy_version: "story4kids-v2-2026-08",
+    privacy_accepted: document.querySelector('[name="privacy_accepted"]').checked,
+    website: val("website")
+  };
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Wird gesendet …";
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": APIKEY
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "submission_failed");
+    statusEl.innerHTML = "<strong>Danke!</strong> Deine Angaben wurden erfolgreich an Story4Kids übermittelt. Wir prüfen den Auftrag jetzt intern.";
+    statusEl.className = "ok";
+    statusEl.style.display = "block";
+    form.reset();
+    document.getElementById("style1").checked = true;
+    statusEl.scrollIntoView({behavior:"smooth", block:"center"});
+  } catch (err) {
+    const messages = {
+      customer_name_required: "Bitte gib deinen Namen an.",
+      valid_email_required: "Bitte prüfe die E-Mail-Adresse.",
+      child_first_name_required: "Bitte gib den Vornamen des Kindes an.",
+      invalid_child_age: "Bitte wähle das Alter des Kindes.",
+      privacy_consent_required: "Bitte bestätige die Datenschutzzustimmung.",
+      too_many_submissions: "Es wurden zu viele Formulare in kurzer Zeit gesendet. Bitte versuche es später noch einmal.",
+      submission_failed: "Das Formular konnte gerade nicht gesendet werden."
+    };
+    statusEl.textContent = messages[err.message] || "Das Formular konnte gerade nicht gesendet werden. Bitte versuche es noch einmal.";
+    statusEl.className = "err";
+    statusEl.style.display = "block";
+    statusEl.scrollIntoView({behavior:"smooth", block:"center"});
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Angaben an Story4Kids senden";
+  }
+});
+</script>
+</body>
+</html>

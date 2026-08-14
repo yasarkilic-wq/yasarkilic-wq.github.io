@@ -369,7 +369,7 @@ async function prepareRealOrder(btn){
     if(!S.readiness?.ai_production_ready){
       toast('OpenAI API-Key fehlt noch.','err');await loadRequest(S.request.id);requestView();return;
     }
-    if(!S.request.metadata?.story_plan){await invoke('story4kids-private-ai',{action:'plan',request_id:S.request.id})}
+    if(!S.request.metadata?.story_plan){await invoke('story4kids-private-plan-fast',{request_id:S.request.id})}
     await invoke('materialize-request-stories',{request_id:S.request.id});
     await loadRequest(S.request.id);
     await updateProductionStage(S.request.id,'story_plan');

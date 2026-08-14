@@ -130,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.1-2026-08-14-bulk-images';
+const APP_VERSION='workflow-v4.2-2026-08-14-server-image-batch';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -592,6 +592,7 @@ async function manageCharacter(id,action,b){
 }
 
 async function illustrationsView(){
+  clearTimeout(window._imageBatchPoll);
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Illustrationen';
   if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
   await loadRequestScenes();
@@ -606,7 +607,7 @@ async function illustrationsView(){
 
   let variantCounts={};
   try{variantCounts=await loadVariantCounts(S.requestScenes.map(x=>x.id))}catch{}
-  const generatingScenes=S.requestScenes.filter(x=>x.status==='generating');
+
   const bulkItems=S.requestScenes.filter(sc=>{
     if(sc.status==='selected'||sc.selected_variant_id)return false;
     return (variantCounts[sc.id]||0)<3;
@@ -615,6 +616,64 @@ async function illustrationsView(){
     if(sc.status==='selected'||sc.selected_variant_id)return false;
     return (variantCounts[sc.id]||0)>=3;
   }).length;
+
+  let batchStatus=null;
+  try{batchStatus=await invoke('story4kids-image-batch',{action:'status',request_id:S.request.id})}catch{}
+  const batchJob=batchStatus?.job||null;
+  const batchRunning=batchJob?.status==='running';
+  const batchFailed=batchJob?.status==='failed';
+  const serverRemaining=batchStatus?.stats?.remaining_generation ?? bulkItems.length;
+  const serverDone=batchJob?Math.max(0,Number(batchJob.processed_scenes)||0):0;
+  const serverTotal=batchJob?Math.max(0,Number(batchJob.total_scenes)||0):0;
+
+  const storyRows=S.stories.map(st=>{
+    const g=groups[st.id]||[];
+    if(st.status!=='ready')return `<div class="sectionlink locked"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>Geschichte noch nicht fertig</span></div><span>–</span></div>`;
+    if(!g.length)return `<div class="sectionlink"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>⚪ Bildszenen noch nicht vorbereitet</span></div><button class="mini-btn" data-storyimages="${st.id}">Vorbereiten ›</button></div>`;
+
+    const sel=g.filter(x=>x.status==='selected'||x.selected_variant_id).length;
+    const gen=g.filter(x=>x.status==='generating').length;
+    const review=g.filter(x=>!(x.status==='selected'||x.selected_variant_id)&&(variantCounts[x.id]||0)>=3).length;
+    const missing=g.filter(x=>!(x.status==='selected'||x.selected_variant_id)&&(variantCounts[x.id]||0)<3&&x.status!=='generating').length;
+
+    let label='';
+    if(sel===g.length) label=`✅ ${sel}/${g.length} ausgewählt · fertig`;
+    else if(gen) label=`🔄 ${sel}/${g.length} ausgewählt · Bild wird gerade erzeugt`;
+    else if(review&&missing) label=`🟡 ${sel}/${g.length} ausgewählt · ${review} bereit zur Auswahl · ${missing} noch offen`;
+    else if(review) label=`🟡 ${sel}/${g.length} ausgewählt · ${review} wartet auf Auswahl`;
+    else label=`⚪ ${sel}/${g.length} ausgewählt · ${missing} noch nicht erzeugt`;
+
+    return `<div class="sectionlink"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>${label}</span></div><button class="mini-btn" data-storyimages="${st.id}">Bilder ›</button></div>`;
+  }).join('');
+
+  let automationCard='';
+  if(allPrepared && (bulkItems.length || batchRunning || batchFailed)){
+    if(batchRunning){
+      automationCard=`<div class="card" style="margin-top:9px">
+        <b>🔄 Server-Automatik läuft</b>
+        <div class="desc">Die Bilder werden jetzt auf dem Server nacheinander erzeugt. <b>Du kannst das Handy sperren oder die Seite schließen.</b></div>
+        <div class="rule ok"><b>${serverDone}/${serverTotal} Server-Schritte abgeschlossen</b><br>Noch ${serverRemaining} Bildszene${serverRemaining===1?'':'n'} ohne vollständige Varianten.</div>
+        ${reviewReady?`<div class="inline-note">🟡 ${reviewReady} Szene${reviewReady===1?'':'n'} sind bereits erzeugt und warten nur auf deine Auswahl.</div>`:''}
+        <button class="btn secondary" id="refreshImageBatch">Status aktualisieren</button>
+        <button class="btn danger" id="cancelImageBatch">Automatik stoppen</button>
+      </div>`;
+    }else if(batchFailed){
+      automationCard=`<div class="card" style="margin-top:9px">
+        <b>Bild-Automatik wurde gestoppt</b>
+        <div class="rule red"><b>Serverlauf gestoppt.</b><br>${esc(batchJob.last_error||'Unbekannter Fehler')}</div>
+        <div class="desc">Bereits fertige Bilder bleiben erhalten. Du kannst den Lauf sicher fortsetzen.</div>
+        <button class="btn" id="generateAllVariants">Mit ${bulkItems.length} offenen Szenen fortsetzen</button>
+      </div>`;
+    }else{
+      automationCard=`<div class="card" style="margin-top:9px">
+        <b>Alle offenen Bilder automatisch erzeugen</b>
+        <div class="desc">Einmal drücken. Danach übernimmt der Server alles nacheinander – <b>auch wenn dein Handy gesperrt ist.</b> Bereits fertige und ausgewählte Szenen werden übersprungen.</div>
+        ${reviewReady?`<div class="inline-note">🟡 ${reviewReady} Szene${reviewReady===1?'':'n'} haben schon Varianten und warten nur auf deine Auswahl.</div>`:''}
+        <button class="btn" id="generateAllVariants">Alle ${bulkItems.length} offenen Szenen serverseitig erzeugen</button>
+        <div class="inline-note">⚠️ Bis zu ${bulkItems.length*3} neue Bildvarianten. Bei einem echten Fehler stoppt der Serverlauf sicher.</div>
+      </div>`;
+    }
+  }
 
   main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button>
   <div class="row"><div><h2 style="margin-bottom:2px">Illustrationen</h2><div class="small">Nach Story gruppiert – niemals mit anderen Kunden vermischt.</div></div><span class="pill">${selected}/${S.requestScenes.length||'–'}</span></div>
@@ -625,24 +684,19 @@ async function illustrationsView(){
 
   ${prepared<readyStories.length?`<div class="card" style="margin-top:9px"><b>Bildszenen vorbereiten</b><div class="desc">Für jede fertige Geschichte werden 2–3 konkrete Bildmomente angelegt.</div><button class="btn" id="prepareAllScenes">Alle fehlenden Storys vorbereiten</button></div>`:''}
 
-  ${allPrepared&&bulkItems.length?`<div class="card" style="margin-top:9px">
-    <b>Alle offenen Bilder automatisch erzeugen</b>
-    <div class="desc">Einmal drücken: Story4Kids erzeugt die fehlenden Szenen automatisch nacheinander. Bereits vorhandene Varianten und ausgewählte Bilder werden nicht doppelt erzeugt.</div>
-    ${reviewReady?`<div class="inline-note">${reviewReady} Szene${reviewReady===1?'':'n'} haben bereits Varianten und warten nur auf deine Auswahl.</div>`:''}
-    ${generatingScenes.length?`<div class="rule warn"><b>Es läuft gerade noch eine Bildszene.</b><br>Warte bitte, bis sie fertig ist.</div>`:`<button class="btn" id="generateAllVariants">Alle ${bulkItems.length} offenen Szenen erzeugen</button>
-    <div class="inline-note">⚠️ Dabei werden bis zu ${bulkItems.length*3} neue Bildvarianten erzeugt. Die Seite sollte währenddessen geöffnet bleiben. Bei einem echten Fehler stoppt die Automatik sicher und kann später fortgesetzt werden.</div>`}
-    <div id="bulkImageProgress"></div>
-  </div>`:''}
+  ${automationCard}
 
-  ${allPrepared&&!bulkItems.length&&reviewReady?`<div class="okbox" style="margin-top:9px"><b>Alle fehlenden Varianten sind erzeugt ✓</b><br>${reviewReady} Bildszene${reviewReady===1?'':'n'} warten noch auf deine Auswahl.</div>`:''}
+  ${allPrepared&&!bulkItems.length&&reviewReady&&!batchRunning?`<div class="okbox" style="margin-top:9px"><b>Alle Bildvarianten sind erzeugt ✓</b><br>${reviewReady} Bildszene${reviewReady===1?'':'n'} warten nur noch auf deine Auswahl.</div>`:''}
 
   ${allSelected?`<div class="okbox" style="margin-top:9px"><b>Alle Illustrationen ausgewählt ✓</b><br>Der Auftrag kann in die Buchprüfung.</div><button class="btn" id="toBook">Weiter zur Buchprüfung</button>`:''}
 
   <div class="section-title">15 Storys</div>
-  ${S.stories.map(st=>{const g=groups[st.id]||[],sel=g.filter(x=>x.status==='selected'||x.selected_variant_id).length;return `<div class="sectionlink ${st.status!=='ready'?'locked':''}"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>${st.status!=='ready'?'Geschichte noch nicht fertig':g.length?`${sel}/${g.length} Bilder ausgewählt`:'Bildszenen noch nicht vorbereitet'}</span></div>${st.status==='ready'?`<button class="mini-btn" data-storyimages="${st.id}">${g.length?'Bilder':'Vorbereiten'} ›</button>`:'<span>–</span>'}</div>`}).join('')}`;
+  ${storyRows}`;
 
   if($('#prepareAllScenes'))$('#prepareAllScenes').onclick=prepareAllScenes;
-  if($('#generateAllVariants'))$('#generateAllVariants').onclick=()=>generateAllMissingVariants(variantCounts);
+  if($('#generateAllVariants'))$('#generateAllVariants').onclick=startServerImageBatch;
+  if($('#refreshImageBatch'))$('#refreshImageBatch').onclick=()=>illustrationsView();
+  if($('#cancelImageBatch'))$('#cancelImageBatch').onclick=cancelServerImageBatch;
   if($('#toBook'))$('#toBook').onclick=async()=>{await updateProductionStage(S.request.id,'book_review');go('book',{id:S.request.id})};
 
   document.querySelectorAll('[data-storyimages]').forEach(b=>b.onclick=async()=>{
@@ -653,28 +707,25 @@ async function illustrationsView(){
       finally{busy(b,false)}
     }else go('scenes',{story:st.id,request:S.request.id})
   });
+
+  if(batchRunning){
+    window._imageBatchPoll=setTimeout(()=>{
+      const h=location.hash||'';
+      if(h.includes('illustrations'))illustrationsView();
+    },15000);
+  }
 }
 
 async function prepareAllScenes(){const b=$('#prepareAllScenes'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)),items=S.stories.filter(x=>x.status==='ready'&&!prepared.has(x.id));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} vorbereiten …`;try{await invoke('materialize-story-scenes',{request_story_id:items[i].id})}catch(e){errors++}}await loadRequestScenes();toast(errors?`${errors} Storys konnten nicht vorbereitet werden.`:'Alle Bildszenen vorbereitet.','ok');await illustrationsView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 
-async function generateAllMissingVariants(initialCounts={}){
+async function startServerImageBatch(){
   const b=$('#generateAllVariants');
   if(!b)return;
+
   await loadRequestScenes();
-
-  let counts={...initialCounts};
+  let counts={};
   try{counts=await loadVariantCounts(S.requestScenes.map(x=>x.id))}catch{}
-
-  if(S.requestScenes.some(x=>x.status==='generating')){
-    toast('Es läuft bereits eine Bildszene. Bitte erst fertig werden lassen.','err');
-    return;
-  }
-
-  const storyMap=Object.fromEntries(S.stories.map(x=>[x.id,x]));
-  const items=S.requestScenes.filter(sc=>{
-    if(sc.status==='selected'||sc.selected_variant_id)return false;
-    return (counts[sc.id]||0)<3;
-  });
+  const items=S.requestScenes.filter(sc=>!(sc.status==='selected'||sc.selected_variant_id)&&(counts[sc.id]||0)<3);
 
   if(!items.length){
     toast('Alle fehlenden Bildvarianten sind bereits vorhanden.','ok');
@@ -682,50 +733,35 @@ async function generateAllMissingVariants(initialCounts={}){
     return;
   }
 
-  const maxNew=items.reduce((n,sc)=>n+((counts[sc.id]||0)>0?3:3),0);
-  const ok=confirm(`Alle ${items.length} offenen Bildszene${items.length===1?'':'n'} automatisch erzeugen?\n\nEs werden jeweils 3 Varianten erstellt (bis zu ${maxNew} neue Bilder). Bereits fertige Szenen werden übersprungen.\n\nDie Seite sollte währenddessen geöffnet bleiben.`);
+  const ok=confirm(`Alle ${items.length} offenen Bildszene${items.length===1?'':'n'} serverseitig erzeugen?\n\nEs werden jeweils 3 Varianten erstellt (bis zu ${items.length*3} neue Bilder).\n\nDanach darfst du das Handy sperren oder die Seite schließen.`);
   if(!ok)return;
 
-  let wake=null;
-  try{if(navigator.wakeLock?.request)wake=await navigator.wakeLock.request('screen')}catch{}
-
-  let done=0;
   try{
-    busy(b,true);
-    for(let i=0;i<items.length;i++){
-      const sc=items[i],story=storyMap[sc.request_story_id],existing=counts[sc.id]||0;
-      b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} · Story ${story?.position||'–'}, Szene ${sc.scene_index} …`;
-      const p=$('#bulkImageProgress');
-      if(p)p.innerHTML=`<div class="rule"><b>Automatik läuft</b><br>${done}/${items.length} Szenen abgeschlossen. Aktuell: Story ${story?.position||'–'}, Szene ${sc.scene_index}.</div>`;
-
-      try{
-        await invoke('story4kids-private-ai',{
-          action:'scene_variants',
-          request_id:S.request.id,
-          scene_id:sc.id,
-          variant_count:3,
-          regenerate:existing>0
-        });
-
-        const check=await loadVariants(sc.id);
-        if(check.length<3)throw new Error('Es wurden weniger als 3 Bildvarianten gespeichert.');
-        counts[sc.id]=check.length;
-        done++;
-      }catch(e){
-        const p2=$('#bulkImageProgress');
-        if(p2)p2.innerHTML=`<div class="rule red"><b>Automatik sicher gestoppt.</b><br>Story ${story?.position||'–'}, Szene ${sc.scene_index}: ${esc(e.message)}<br>Du kannst später mit demselben Knopf fortsetzen.</div>`;
-        toast('Bildautomatik gestoppt – kein weiterer Auftrag wurde gestartet.','err');
-        return;
-      }
-    }
-
-    toast(`Alle ${done} offenen Bildszene${done===1?'':'n'} wurden erzeugt. Jetzt nur noch auswählen.`, 'ok');
+    busy(b,true,'Server-Automatik starten …');
+    const d=await invoke('story4kids-image-batch',{action:'start',request_id:S.request.id});
+    if(d.already_complete)toast('Alle Bildvarianten sind bereits erzeugt.','ok');
+    else if(d.already_running)toast('Die Server-Automatik läuft bereits weiter.','ok');
+    else toast('Server-Automatik gestartet. Du kannst das Handy jetzt sperren.','ok');
     await illustrationsView();
+  }catch(e){
+    toast(e.message,'err');
   }finally{
-    try{await wake?.release()}catch{}
     if(document.body.contains(b))busy(b,false);
   }
 }
+
+async function cancelServerImageBatch(){
+  const b=$('#cancelImageBatch');
+  if(!confirm('Bild-Automatik wirklich stoppen? Die bereits fertigen Bilder bleiben erhalten.'))return;
+  try{
+    busy(b,true,'Stoppen …');
+    await invoke('story4kids-image-batch',{action:'cancel',request_id:S.request.id});
+    toast('Server-Automatik gestoppt.','ok');
+    await illustrationsView();
+  }catch(e){toast(e.message,'err')}
+  finally{if(document.body.contains(b))busy(b,false)}
+}
+
 async function bookView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;await loadRequestScenes();const storyReady=S.stories.filter(x=>x.status==='ready').length,charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length,pdf=!!S.request.book_pdf_storage_path,all=storyReady===15&&charOk&&imagesOk;
   const demo=String(S.request.metadata?.demo_workflow||'')==='true'||S.request.metadata?.demo_workflow===true;

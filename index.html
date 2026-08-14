@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.0-2026-08-14-print-pdf-auto';
+const APP_VERSION='workflow-v5.1-2026-08-14-ai-budget';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -1011,13 +1011,33 @@ function shippingSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML
 async function settingsView(){
   shell(true);$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
   const x=S.readiness||{},aiKey=!!x.openai_api_key_configured,zdr=!!x.openai_zdr_confirmed,privacy=!!x.privacy_mode_active,aiReady=!!x.ai_production_ready;
+  let budget=null,budgetError='';
+  try{budget=await invoke('story4kids-ai-budget',{action:'status'})}catch(e){budgetError=e.message||'Budgetdaten konnten nicht geladen werden.'}
+  const internal=budget?.internal||{},oa=budget?.openai||{},live=!!oa.live_available;
+  const nf=new Intl.NumberFormat('de-DE');
+  const money=live?`${Number(oa.costs?.value||0).toFixed(2)} ${(oa.costs?.currency||'usd').toUpperCase()}`:'–';
+  const totalTokens=live?nf.format(Number(oa.tokens?.total_tokens||0)):'–';
+  const inputTokens=live?nf.format(Number(oa.tokens?.input_tokens||0)):'–';
+  const outputTokens=live?nf.format(Number(oa.tokens?.output_tokens||0)):'–';
+  const imagesLive=live?nf.format(Number(oa.image_usage?.images||0)):'–';
   main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Aufträge</button><h2>Einstellungen</h2>
-  <div class="section-title">KI-Verbindung</div><div class="card">${statusLine('OpenAI API-Key',aiKey)}${statusLine('Datenschutzmodus',privacy)}${statusLine('KI-Produktion',aiReady)}<div class="statusline"><b>Zero Data Retention</b><span class="${zdr?'yes':'mini'}">${zdr?'✓ zusätzlich aktiv':'optional · noch nicht aktiv'}</span></div></div>
-  ${aiReady?`<div class="rule ok"><b>KI ist bereit – Datenschutzmodus aktiv.</b><br>Kontaktangaben bleiben in Supabase. Der Kindername und genaue Ortsangaben werden vor OpenAI durch Platzhalter ersetzt und erst danach intern wieder eingesetzt. Hochgeladene echte Kinderfotos bleiben ohne ZDR gesperrt.</div>`:`<div class="rule warn"><b>KI noch nicht bereit.</b><br>OPENAI_API_KEY muss als Supabase Edge-Function-Secret vorhanden sein.</div>`}
+  <div class="section-title">KI-Verbindung</div><div class="card">${statusLine('OpenAI Produktions-Key',aiKey)}${statusLine('Datenschutzmodus',privacy)}${statusLine('KI-Produktion',aiReady)}<div class="statusline"><b>Zero Data Retention</b><span class="${zdr?'yes':'mini'}">${zdr?'✓ zusätzlich aktiv':'optional · noch nicht aktiv'}</span></div></div>
+  ${aiReady?`<div class="rule ok"><b>KI ist bereit – Datenschutzmodus aktiv.</b><br>Schlüsselwerte werden im Admin niemals angezeigt. Kontaktangaben bleiben in Supabase; personenbezogene Angaben werden vor der KI-Verarbeitung minimiert bzw. pseudonymisiert.</div>`:`<div class="rule warn"><b>KI noch nicht bereit.</b><br>Der OpenAI Produktions-Key muss als Supabase-Secret vorhanden sein.</div>`}
   <button class="btn secondary" id="refreshAI">Status neu prüfen</button>
+
+  <div class="section-title">KI & Budget</div>
+  <div class="summary-grid"><div class="summary-tile"><strong>${totalTokens}</strong><span>OpenAI Tokens · Monat</span></div><div class="summary-tile"><strong>${money}</strong><span>OpenAI Kosten · Monat</span></div><div class="summary-tile"><strong>${nf.format(Number(internal.generation_jobs||0))}</strong><span>Story4Kids KI-Jobs · Monat</span></div><div class="summary-tile"><strong>${nf.format(Number(internal.stored_images||0))}</strong><span>Bilder gespeichert · Monat</span></div></div>
+  ${live?`<div class="card"><div class="statusline"><b>Input-Tokens</b><span class="yes">${inputTokens}</span></div><div class="statusline"><b>Output-Tokens</b><span class="yes">${outputTokens}</span></div><div class="statusline"><b>Bild-Nutzung</b><span class="yes">${imagesLive}</span></div><div class="statusline"><b>OpenAI Kosten-API</b><span class="yes">✓ verbunden</span></div></div>`:`<div class="rule warn"><b>Live-Token & Kosten noch nicht verbunden.</b><br>${oa.admin_key_configured?'Der OpenAI Admin-Kosten-Key ist vorhanden, aber die Kosten-API antwortet noch nicht.':'Für exakte organisationsweite Token- und Kostenwerte wird einmalig ein separater OpenAI Admin-Key als Supabase-Secret OPENAI_ADMIN_KEY benötigt.'}</div>`}
+  ${budgetError?`<div class="rule red"><b>Budgetstatus nicht verfügbar.</b><br>${esc(budgetError)}</div>`:''}
+  <div class="card"><b>Guthaben & Abrechnung</b><div class="desc">Das tatsächliche Prepaid-Guthaben bleibt bei OpenAI. Story4Kids zeigt keine geheimen Schlüssel und speichert keine Schlüssel im Browser.</div><button class="btn" id="openCredits">OpenAI Guthaben öffnen ↗</button><button class="btn secondary" id="openUsage">OpenAI Usage öffnen ↗</button>${!oa.admin_key_configured?'<button class="btn soft" id="openAdminKeys">Kosten-API verbinden ↗</button>':''}</div>
+  <div class="card"><b>Story4Kids Nutzung diesen Monat</b><div class="desc">Erfolgreiche Story-Jobs: ${nf.format(Number(internal.succeeded||0))} · fehlgeschlagene/erneute Versuche: ${nf.format(Number(internal.failed||0))} · laufend: ${nf.format(Number(internal.running||0))}</div><div class="inline-note">Diese internen Jobzahlen sind unabhängig vom OpenAI-Billing und helfen beim Erkennen unnötiger Wiederholungen.</div></div>
+
   <div class="section-title">Kundenformular</div><div class="card"><b>Live-Testformular</b><div class="desc">Neue Formulareingaben erscheinen automatisch als neuer Auftrag.</div><button class="btn secondary" id="settingsForm">Formular öffnen ↗</button></div>
   <div class="section-title">Passwort</div><details class="overview-card"><summary><div class="row"><b>Passwort ändern</b><span class="chev">⌄</span></div></summary><div class="inside"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div></details>`;
   $('#refreshAI').onclick=async e=>{try{busy(e.currentTarget,true,'Prüfen …');S.readiness=null;await loadReadiness();toast('KI-Status aktualisiert.','ok');settingsView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  $('#openCredits').onclick=()=>window.open(budget?.links?.credit_grants||'https://platform.openai.com/settings/organization/billing/credit-grants','_blank');
+  $('#openUsage').onclick=()=>window.open(budget?.links?.usage_dashboard||'https://platform.openai.com/usage','_blank');
+  if($('#openAdminKeys'))$('#openAdminKeys').onclick=()=>window.open(budget?.links?.admin_keys||'https://platform.openai.com/settings/organization/admin-keys','_blank');
   $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=5','_blank');
   if($('#changePass'))$('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }

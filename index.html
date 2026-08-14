@@ -130,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.2-2026-08-14-server-image-batch';
+const APP_VERSION='workflow-v4.3-2026-08-14-review-pdf';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -243,7 +243,7 @@ async function openPrivatePdf(path){
 }
 
 async function loadRequests(){
-  S.requests=await rest('customer_requests?select=id,status,production_stage,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at,book_approved_at,book_pdf_storage_path,print_provider,print_order_number,print_ordered_at,printed_at,shipping_tracking,shipped_at,completed_at&order=submitted_at.desc&limit=50');
+  S.requests=await rest('customer_requests?select=id,status,production_stage,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at,book_approved_at,review_pdf_storage_path,review_pdf_generated_at,book_pdf_storage_path,print_provider,print_order_number,print_ordered_at,printed_at,shipping_tracking,shipped_at,completed_at&order=submitted_at.desc&limit=50');
   if(S.request){const x=S.requests.find(r=>r.id===S.request.id);if(x)S.request=x}
 }
 async function loadRequest(id){
@@ -365,7 +365,7 @@ function requestView(){
   }else if(stage==='illustrations'){
     taskTitle='Illustrationen fertigstellen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Jede Geschichte bleibt separat.`;taskButton=`<button class="btn" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder bearbeiten</button>`;
   }else if(stage==='book_review'){
-    taskTitle='Fertiges Buch prüfen';taskText=r.book_pdf_storage_path?'Das Druck-PDF ist fertig. Einmal ansehen und anschließend zum Druck freigeben.':'Texte und Bilder sind fertig. Jetzt wird daraus die endgültige Buchdatei.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buch öffnen</button>`;
+    taskTitle='Buch kontrollieren';taskText=r.review_pdf_storage_path?'Die Review-PDF ist fertig. Prüfe jetzt alle Geschichten und Bilder.':'Texte und Bilder sind fertig. Jetzt wird die Review-PDF zur Endkontrolle erstellt.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buch öffnen</button>`;
   }else if(['print_ready','printing','printed','shipped'].includes(stage)){
     taskTitle=nextAction(r);taskText='Die Buchproduktion ist abgeschlossen. Dieser Auftrag liegt jetzt im Druck-/Versandbereich.';taskButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
   }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
@@ -378,12 +378,12 @@ function requestView(){
   <div class="contact">${contactHtml(r)}</div>${compactFlow(stage)}
   <div class="bigstep"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
   ${failed?`<div class="issuebox"><b>${failed} Problem${failed===1?'':'e'} erkannt</b><br>Nur diese Ausnahmen brauchen deine Aufmerksamkeit.</div>`:''}
-  <div class="simple-status"><div><b>${storySummary}</b><span>Geschichten</span></div><div><b>${charSummary}</b><span>Figuren</span></div><div><b>${imageSummary}</b><span>Illustrationen</span></div><div><b>${r.book_pdf_storage_path?'PDF fertig':'noch offen'}</b><span>Buch</span></div></div>
+  <div class="simple-status"><div><b>${storySummary}</b><span>Geschichten</span></div><div><b>${charSummary}</b><span>Figuren</span></div><div><b>${imageSummary}</b><span>Illustrationen</span></div><div><b>${r.review_pdf_storage_path?'Review fertig':'noch offen'}</b><span>Buch</span></div></div>
   <div class="section-title">Details nur bei Bedarf</div>
   <details class="overview-card"><summary><div class="row"><div><b>Kundendaten</b><div class="desc">Kontakt, Wünsche, Personalisierung</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="kv"><b>Alter</b><span>${esc(r.child_age)} Jahre</span><b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span><b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span><b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span><b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span><b>Moral</b><span>${esc(r.moral_or_message||'—')}</span></div>${hasContract?'<button class="btn soft" onclick="showContract()">Story Contract ansehen</button>':''}</div></details>
   <details class="overview-card"><summary><div class="row"><div><b>Story-Ideen & Geschichten</b><div class="desc">${esc(storySummary)}${failed?' · '+failed+' Fehler':''}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('production',{id:'${esc(r.id)}'})">Story-Bereich öffnen</button></div></details>
   <details class="overview-card"><summary><div class="row"><div><b>Figuren & Bilder</b><div class="desc">${esc(charSummary)} · ${esc(imageSummary)}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="actions"><button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren</button><button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder</button></div></div></details>
-  <details class="overview-card"><summary><div class="row"><div><b>Fertiges Buch</b><div class="desc">${r.book_pdf_storage_path?'Druck-PDF vorhanden':'Noch nicht erstellt'}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Buchbereich öffnen</button></div></details>`;
+  <details class="overview-card"><summary><div class="row"><div><b>Fertiges Buch</b><div class="desc">${r.review_pdf_storage_path?'Review-PDF vorhanden':'Noch nicht erstellt'}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Buchbereich öffnen</button></div></details>`;
   if($('#prepareOrder'))$('#prepareOrder').onclick=e=>prepareRealOrder(e.currentTarget);
 }
 async function prepareRealOrder(btn){
@@ -762,12 +762,62 @@ async function cancelServerImageBatch(){
   finally{if(document.body.contains(b))busy(b,false)}
 }
 
+async function startReviewPdf(btn){
+  try{
+    busy(btn,true,'Review-PDF wird gestartet …');
+    await invoke('story4kids-review-pdf',{action:'start',request_id:S.request.id});
+    toast('Review-PDF läuft jetzt serverseitig. Dein Handy darf gesperrt werden.','ok');
+    await bookView();
+  }catch(e){toast(e.message,'err')}
+  finally{if(document.body.contains(btn))busy(btn,false)}
+}
+async function approveReviewPdf(btn){
+  if(!confirm('Hast du alle Geschichten und Bilder in der Review-PDF geprüft? Das finale Druck-PDF wird dadurch noch NICHT erstellt.'))return;
+  try{
+    busy(btn,true,'Freigabe wird gespeichert …');
+    await invoke('story4kids-review-pdf',{action:'approve',request_id:S.request.id});
+    await loadRequest(S.request.id);
+    toast('Review freigegeben. Als Nächstes kommt später das finale Drucklayout.','ok');
+    await bookView();
+  }catch(e){toast(e.message,'err')}
+  finally{if(document.body.contains(btn))busy(btn,false)}
+}
 async function bookView(){
-  shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;await loadRequestScenes();const storyReady=S.stories.filter(x=>x.status==='ready').length,charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length,pdf=!!S.request.book_pdf_storage_path,all=storyReady===15&&charOk&&imagesOk;
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;
+  await loadRequestScenes();
+  const storyReady=S.stories.filter(x=>x.status==='ready').length;
+  const charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved');
+  const prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  const selected=S.requestScenes.filter(x=>x.selected_variant_id).length;
+  const imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length;
+  const all=storyReady===15&&charOk&&imagesOk;
+  let reviewState=null;
+  try{reviewState=await invoke('story4kids-review-pdf',{action:'status',request_id:S.request.id})}catch(e){reviewState={error:e.message}}
+  const job=reviewState?.job||null;
+  const reviewPath=reviewState?.review_pdf_storage_path||S.request.review_pdf_storage_path||null;
+  const reviewReady=!!reviewPath;
+  const approved=!!(reviewState?.book_approved_at||S.request.book_approved_at);
+  const running=job?.status==='running';
+  const failed=job?.status==='failed';
+  const done=Number(job?.processed_stories||0),pct=Math.round((done/15)*100);
   const demo=String(S.request.metadata?.demo_workflow||'')==='true'||S.request.metadata?.demo_workflow===true;
-  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div>${demo?'<div class="rule warn"><b>Ablauftest.</b><br>Storys, Figuren und Bilder sind nur simuliert freigegeben. Das PDF dient ausschließlich zum Testen von Buchprüfung und Druckablauf.</div>':''}<div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Druck-PDF erstellt',pdf)}</div><div class="book-preview"><div class="big">📖</div><b>${pdf?'Buchdatei ist vorhanden':'Buchlayout noch nicht erstellt'}</b><span>${pdf?'Öffne die Druck-PDF und prüfe sie wie später bei einem echten Auftrag.':'Hier kommt später die echte blätterbare Buchvorschau mit Cover, Innenseiten und Rückseite.'}</span></div>${pdf?'<button class="btn secondary" id="openPdf">📄 Druck-PDF öffnen</button>':''}${all&&!pdf?'<div class="rule warn"><b>Inhalte sind bereit.</b><br>Als nächster technischer Block fehlt noch die automatische Layout-/PDF-Erstellung. Deshalb kann der Auftrag noch nicht versehentlich zum Druck freigegeben werden.</div>':''}${pdf?'<button class="btn ok" id="approveBook">Buch freigeben → Druckbereit</button>':'<button class="btn" disabled>Druckfreigabe gesperrt – PDF fehlt</button>'}`;
-  if($('#openPdf'))$('#openPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(S.request.book_pdf_storage_path)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
-  if($('#approveBook'))$('#approveBook').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(S.request.id,'print_ready');toast('Buch ist druckbereit.','ok');go('print')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  let reviewBlock='';
+  if(reviewReady){
+    reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Öffne sie und prüfe Geschichten, Reihenfolge und alle ausgewählten Bilder.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>${approved?'<div class="rule ok"><b>Review freigegeben.</b><br>Das endgültige Drucklayout wird erst im nächsten technischen Schritt erstellt.</div><button class="btn" disabled>Finales Druck-PDF noch nicht erstellt</button>':'<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>'}`;
+  }else if(running){
+    reviewBlock=`<div class="book-preview"><div class="big">⚙️</div><b>Review-PDF wird erstellt</b><span>${done}/15 Geschichten verarbeitet${job.current_story_position?' · aktuell Geschichte '+job.current_story_position:''}. Das läuft serverseitig weiter.</span></div><div class="progress"><span style="width:${pct}%"></span></div><div class="small" style="margin-top:6px">${pct}% · Handy darf gesperrt werden</div><button class="btn" disabled>Review-PDF wird erstellt …</button>`;
+  }else if(failed){
+    reviewBlock=`<div class="rule red"><b>PDF-Erstellung gestoppt.</b><br>${esc(job.last_error||'Unbekannter Fehler')}</div><button class="btn" id="startReviewPdf">Review-PDF erneut starten</button>`;
+  }else if(all){
+    reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Alles bereit für die Endkontrolle</b><span>Jetzt wird aus den 15 Geschichten und 32 ausgewählten Bildern eine private Review-PDF erstellt.</span></div><div class="rule warn"><b>Nur Kontroll-PDF.</b><br>Noch kein Drucklayout und keine Druckfreigabe.</div><button class="btn" id="startReviewPdf">Review-PDF erzeugen</button>`;
+  }else{
+    reviewBlock='<button class="btn" disabled>Review-PDF gesperrt - Inhalte fehlen</button>';
+  }
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}</div>${reviewBlock}`;
+  if($('#startReviewPdf'))$('#startReviewPdf').onclick=e=>startReviewPdf(e.currentTarget);
+  if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
+  if(running)setTimeout(()=>{if(route()==='book')bookView()},5000);
 }
 
 function openVariantViewer(url,variantId,isSelected,label='Bildvariante'){

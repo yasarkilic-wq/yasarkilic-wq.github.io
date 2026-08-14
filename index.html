@@ -99,7 +99,6 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 .form-cta{background:#f2f6f8;border:1px solid #dce6eb;border-radius:17px;padding:13px;margin:9px 0 13px}.form-cta b{color:var(--navy);font-size:13px}.form-cta p{font-size:10px;color:var(--muted);margin:4px 0 8px}.form-cta .btn{margin:0}
 .sectionlink{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px;margin-bottom:8px}.sectionlink b{font-size:13px;color:var(--navy)}.sectionlink span{font-size:11px;color:var(--muted)}
 
-
 .taskbox{background:linear-gradient(145deg,#173957,#2c6387);color:#fff;border-radius:21px;padding:16px;margin:10px 0 14px;box-shadow:0 12px 28px #17395725}.taskbox .eyebrow{font-size:9px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;opacity:.7}.taskbox h3{font-size:18px;margin:5px 0 4px}.taskbox p{font-size:11px;line-height:1.4;margin:0;opacity:.82}.taskbox .btn{background:#fff;color:var(--navy);margin-top:12px}.phase-list{display:grid;gap:7px}.phase-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px;text-decoration:none;color:inherit}.phase-row.current{border-color:#9cb3c5;box-shadow:0 0 0 2px #1739570d}.phase-row.locked{opacity:.58}.phase-icon{width:34px;height:34px;border-radius:11px;background:#eef2f4;display:grid;place-items:center;font-size:13px;font-weight:950;color:var(--navy)}.phase-row.done .phase-icon{background:#e5f4ed;color:var(--ok)}.phase-row.current .phase-icon{background:var(--navy);color:#fff}.phase-main b{display:block;font-size:12px;color:var(--navy)}.phase-main span{font-size:10px;color:var(--muted);line-height:1.35}.phase-state{font-size:10px;font-weight:900;color:var(--muted);text-align:right}.phase-row.done .phase-state{color:var(--ok)}.phase-row.current .phase-state{color:var(--navy)}
 .order-progress{height:6px;background:#eee6da;border-radius:99px;overflow:hidden;margin-top:9px}.order-progress span{height:100%;display:block;background:var(--navy)}.order-meta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:9px;color:var(--muted)}
 .summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.summary-tile{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px}.summary-tile strong{display:block;font-size:19px;color:var(--navy)}.summary-tile span{font-size:10px;color:var(--muted)}
@@ -131,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v3-2026-08-13';
+const APP_VERSION='workflow-v4-2026-08-14-storyview-safe';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -175,10 +174,13 @@ function saveSession(s){S.session=s;if(s)localStorage.setItem('s4k_session',JSON
 function loadStoredSession(){try{const x=JSON.parse(localStorage.getItem('s4k_session')||'null');if(x?.access_token)S.session=x}catch{}}
 function jwtExp(token){try{return JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp||0}catch{return 0}}
 async function refreshSession(){
-  if(!S.session?.refresh_token)throw new Error('Keine Sitzung');
-  const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:PUB_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:S.session.refresh_token})});
-  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.msg||d.message||'Sitzung abgelaufen');
-  saveSession(d);return d;
+  if(!S.session?.refresh_token){saveSession(null);throw new Error('Sitzung abgelaufen')}
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:PUB_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:S.session.refresh_token})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){saveSession(null);throw new Error(d.msg||d.message||'Sitzung abgelaufen')}
+    saveSession(d);return d;
+  }catch(e){saveSession(null);throw e}
 }
 async function token(){
   if(!S.session?.access_token)throw new Error('Nicht angemeldet');
@@ -189,7 +191,11 @@ async function authFetch(url,opts={}){
   let t=await token();
   const headers={apikey:PUB_KEY,Authorization:'Bearer '+t,...(opts.headers||{})};
   let r=await fetch(url,{...opts,headers});
-  if(r.status===401&&S.session?.refresh_token){await refreshSession();t=S.session.access_token;headers.Authorization='Bearer '+t;r=await fetch(url,{...opts,headers})}
+  if(r.status===401&&S.session?.refresh_token){
+    try{await refreshSession()}catch(e){saveSession(null);throw new Error('Sitzung abgelaufen – bitte neu anmelden')}
+    t=S.session.access_token;headers.Authorization='Bearer '+t;r=await fetch(url,{...opts,headers});
+  }
+  if(r.status===401){saveSession(null);throw new Error('Sitzung abgelaufen – bitte neu anmelden')}
   return r;
 }
 async function login(email,password){
@@ -267,7 +273,6 @@ async function updateProductionStage(requestId,stage,extra={}){
   await loadRequests();if(S.request?.id===requestId)await loadRequest(requestId);
 }
 function activeNav(name){document.querySelectorAll('[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===name))}
-
 
 function route(){return (location.hash||'#login').slice(1).split('?')[0]}
 function query(){return new URLSearchParams((location.hash.split('?')[1]||''))}
@@ -396,7 +401,7 @@ function productionView(){
   ${ideaMode&&planned?`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>15 Story-Ideen freigeben</h3><p>Prüfe nur Titel und Kurzinhalt. Einzelheiten bleiben eingeklappt.</p><button class="btn" id="approveAll">Alle ${planned} offenen Ideen freigeben</button></div>`:''}
   ${!planned&&rd<15?`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>${fail?'Fehler beheben':'15 Geschichten erstellen'}</h3><p>Ziel: jede Geschichte 750–850 Wörter. Nach der Erstellung sollen künftig nur Qualitäts-Ausnahmen sichtbar werden.</p><button class="btn" id="generateAll">${fail?'Fehlende/fehlerhafte Geschichten erneut erzeugen':'Alle fehlenden Geschichten erzeugen'}</button></div>`:''}
   ${rd===15?`<div class="okbox"><b>15/15 Geschichten fertig ✓</b><br>Du musst die Texte nicht alle lesen. Öffne Details nur bei Bedarf.</div><button class="btn" id="toChars">Weiter zu Figuren</button>`:''}
-  ${problemItems.length?`<div class="section-title">Nur Probleme</div>${problemItems.map(s=>`<div class="story-quick"><div class="row"><div><div class="story-title">${String(s.position).padStart(2,'0')} · ${esc(s.title)}</div><div class="desc">${esc(s.generation_error?.provider?.error||'Prüfung erforderlich')}</div></div><span class="pill red">${esc(statusLabel(s.status))}</span></div><button class="btn secondary" data-openstory="${s.id}">Problem öffnen</button></div>`).join('')}`:''}
+  ${problemItems.length?`<div class="section-title">Nur Probleme</div>${problemItems.map(s=>`<div class="story-quick"><div class="row"><div><div class="story-title">${String(s.position).padStart(2,'0')} · ${esc(s.title)}</div><div class="desc">${esc(s.generation_error?.provider?.error||s.generation_error?.message||'Prüfung erforderlich')}</div></div><span class="pill red">${esc(statusLabel(s.status))}</span></div><button class="btn secondary" data-openstory="${s.id}">Problem öffnen</button></div>`).join('')}`:''}
   <details class="overview-card" ${ideaMode&&planned?'open':''}><summary><div class="row"><div><b>${ideaMode?'15 Story-Ideen':'Alle 15 Geschichten'}</b><div class="desc">Nur öffnen, wenn du einzelne Inhalte ansehen oder ändern möchtest.</div></div><span class="chev">⌄</span></div></summary><div class="inside" id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div><div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details</button></div></div>`}).join('')}</div></details>`;
   if($('#approveAll'))$('#approveAll').onclick=approveAllPlanned;
   if($('#generateAll'))$('#generateAll').onclick=generateAllStories;
@@ -407,20 +412,62 @@ function productionView(){
 }
 async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('manage-request-story-item',{request_id:S.request.id,position,action:'approve'});await loadStories();if(!S.stories.some(x=>x.status==='planned'))await updateProductionStage(S.request.id,'story_generation');toast('Story-Idee freigegeben.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();await updateProductionStage(S.request.id,'story_generation');toast('Alle Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
-async function generateAllStories(){const b=$('#generateAll');if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length}: Geschichte erzeugen …`;try{await invoke('story4kids-private-ai',{action:'story',request_id:S.request.id,position:items[i].position,request_key:'web-'+crypto.randomUUID()})}catch(e){errors++}}await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');toast(errors?`${items.length-errors} fertig, ${errors} mit Fehler.`:'Alle Geschichten sind fertig.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function generateAllStories(){
+  const b=$('#generateAll');
+  if(!S.readiness)await loadReadiness();
+  if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}
+  if(S.stories.some(x=>x.status==='generating')){toast('Es läuft bereits eine Geschichte. Bitte zuerst warten oder aktualisieren.','err');return}
+  const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0,done=0,stopped=false;
+  try{
+    busy(b,true);
+    for(let i=0;i<items.length;i++){
+      b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length}: Geschichte erzeugen …`;
+      try{await invoke('story4kids-story-safe',{request_id:S.request.id,position:items[i].position,request_key:'safe-batch-'+crypto.randomUUID()});done++}
+      catch(e){const locked=e.status===409&&(e.data?.error==='story_generation_already_running'||e.data?.error==='story_slot_already_claimed');if(locked){stopped=true;toast('Eine andere Story-Generierung läuft bereits. Stapel gestoppt.','err');break}errors++}
+      await loadStories();
+    }
+    await loadStories();
+    if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');
+    if(!stopped)toast(errors?`${done} neu fertig, ${errors} mit Fehler.`:`${done} Geschichten neu fertig.`,'ok');
+    productionView();
+  }catch(e){toast(e.message,'err');await loadStories();productionView()}finally{busy(b,false)}
+}
+
+async function storyView(){
+  shell(true);activeNav('dashboard');
+  const id=query().get('id');
+  const s=S.stories.find(x=>x.id===id);
+  $('#headerSub').textContent='Geschichte';
+  if(!s){main.innerHTML='<div class="empty">Geschichte nicht gefunden.</div>';return}
+  S.currentStory=s;
+  const p=s.plan_item||{};
+  const err=s.generation_error?.message||s.generation_error?.provider?.error||s.generation_error?.error||'';
+  main.innerHTML=`<button class="backline" onclick="go('production',{id:'${esc(S.request.id)}'})">‹ Geschichten</button>
+    <div class="row"><div><h2 style="margin-bottom:2px">${String(s.position).padStart(2,'0')} · ${esc(s.title)}</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill ${pillClass(s.status)}">${esc(statusLabel(s.status))}</span></div>
+    <div class="card"><div class="kv"><b>Kurzidee</b><span>${esc(s.premise||p.premise||'—')}</span><b>Ort</b><span>${esc(p.primary_setting||'—')}</span><b>Problem</b><span>${esc(p.central_problem||'—')}</span><b>Lösung</b><span>${esc(p.active_resolution||'—')}</span></div></div>
+    ${err?`<div class="rule red"><b>Letzter Fehler</b><br>${esc(err)}</div>`:''}
+    <div id="storyActions"></div>
+    <div id="storyOutput">${s.status==='ready'?'<div class="empty">Geschichte wird geladen …</div>':''}</div>`;
+  renderStoryActions(s);
+  if(s.status==='ready'&&s.story_project_id){
+    try{await loadStoryOutput(s)}catch(e){$('#storyOutput').innerHTML=`<div class="rule red"><b>Text konnte nicht geladen werden.</b><br>${esc(e.message)}</div>`}
+  }
+}
+
 function renderStoryActions(s){
   let h='',aiReady=!!S.readiness?.ai_production_ready;
   if(s.status==='planned'){
     h+=`<button class="btn ok" id="approveStory">Idee freigeben</button><button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
   }else if(s.status==='failed'&&s.approved_at){
-    h+=`<div class="rule red"><b>KI-Erstellung fehlgeschlagen.</b><br>${esc(s.generation_error?.provider?.error||'Bitte Systemstatus prüfen.')}</div>`;
+    const msg=s.generation_error?.message||s.generation_error?.provider?.error||s.generation_error?.error||'Bitte erneut erzeugen.';
+    h+=`<div class="rule red"><b>KI-Erstellung fehlgeschlagen.</b><br>${esc(msg)}</div>`;
     h+=aiReady?`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Der OpenAI API-Key muss bereit sein. Der Datenschutzmodus pseudonymisiert direkte Identifikatoren.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
     h+=`<button class="btn secondary" id="replaceStory">Story-Idee ändern</button>`;
   }else if(s.status==='approved'){
     h+=aiReady?`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Sobald OpenAI bereit ist, wird dieser Knopf freigeschaltet.</div><button class="btn" disabled>800-Wörter-Geschichte erzeugen</button>`;
     h+=`<div class="actions"><button class="btn secondary" id="replaceStory">Idee ersetzen</button><button class="btn danger" id="reopenStory">Freigabe zurücknehmen</button></div>`;
-  }else if(s.status==='generating')h+=`<div class="rule warn">Die Geschichte wird gerade erzeugt. Danach bitte aktualisieren.</div>`;
-  else if(s.status==='ready')h+=`<button class="btn" id="openScenes">Illustrationen bearbeiten</button>`;
+  }else if(s.status==='generating')h+=`<div class="rule warn"><b>Geschichte wird gerade erzeugt.</b><br>Ein zweiter Tab kann keine weitere Geschichte parallel starten.</div>`;
+  else if(s.status==='ready')h+=`<div class="rule ok"><b>Geschichte fertig ✓</b><br>Der vollständige Text steht direkt darunter.</div><button class="btn secondary" id="openScenes">Illustrationen bearbeiten</button>`;
   $('#storyActions').innerHTML=h;
   if($('#approveStory'))$('#approveStory').onclick=()=>storyAction('approve',s);
   if($('#reopenStory'))$('#reopenStory').onclick=()=>storyAction('reopen',s);
@@ -439,7 +486,21 @@ function replaceStorySheet(s){
   modal.classList.add('open');
   $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('story4kids-private-ai',{action:'replace_plan',request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
-async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('story4kids-private-ai',{action:'story',request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
+async function generateStory(s,btn=null){
+  if(!S.readiness)await loadReadiness();
+  if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}
+  if(S.stories.some(x=>x.status==='generating'&&x.id!==s.id)){toast('Es läuft bereits eine andere Geschichte. Bitte warten.','err');return}
+  try{
+    busy(btn,true,'Geschichte wird erzeugt …');
+    await invoke('story4kids-story-safe',{request_id:S.request.id,position:s.position,request_key:'safe-web-'+crypto.randomUUID()});
+    await loadStories();
+    if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');
+    const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte ist fertig.','ok');S.currentStory=ns;await storyView();
+  }catch(e){
+    const locked=e.status===409&&(e.data?.error==='story_generation_already_running'||e.data?.error==='story_slot_already_claimed');
+    if(locked)toast(`Es läuft bereits Geschichte ${e.data?.active_position||''}. Bitte warten.`,'err');else toast(e.message,'err');
+    await loadStories();await storyView();
+  }finally{busy(btn,false)}
 }
 async function loadStoryOutput(s){
   const pages=await rest('story_pages?select=page_number,text_content,illustration_prompt&project_id=eq.'+encodeURIComponent(s.story_project_id)+'&order=page_number.asc');
@@ -595,7 +656,10 @@ async function render(){
     if(r==='scenes'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return scenesView()}
     if(r==='status')return settingsView();
     go('dashboard');
-  }catch(e){main.innerHTML=`<div class="hero"><h2>Fehler</h2><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Neu laden</button></div>`;toast(e.message,'err')}
+  }catch(e){
+    if(!S.session||/sitzung|nicht angemeldet/i.test(String(e?.message||''))){saveSession(null);if(route()!=='login')go('login');return loginView()}
+    main.innerHTML=`<div class="hero"><h2>Fehler</h2><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Neu laden</button></div>`;toast(e.message,'err')
+  }
 }
 window.addEventListener('hashchange',render);
 document.querySelectorAll('[data-route]').forEach(b=>b.onclick=()=>go(b.dataset.route));
@@ -603,9 +667,18 @@ $('#settingsBtn').onclick=()=>go('settings');
 $('#logoutBtn').onclick=logout;
 $('#refreshBtn').onclick=async()=>{try{await loadRequests();if(S.request)await loadRequest(S.request.id);S.readiness=null;await render();toast('Aktualisiert.','ok')}catch(e){toast(e.message,'err')}};
 
-loadStoredSession();
-if(!location.hash)location.hash=S.session?'dashboard':'login';
-render();
+async function boot(){
+  loadStoredSession();
+  if(S.session){
+    try{
+      const r=await authFetch(SB_URL+'/auth/v1/user');
+      if(!r.ok)throw new Error('Sitzung abgelaufen');
+    }catch(e){saveSession(null)}
+  }
+  if(!location.hash||(!S.session&&route()!=='login'))location.hash=S.session?'dashboard':'login';
+  await render();
+}
+boot();
 </script>
 </body>
 </html>

@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.8-2026-08-14-premium-dashboard';
+const APP_VERSION='workflow-v4.9-2026-08-14-full-pipeline-live-status';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -369,8 +369,10 @@ function requestView(){
   }
   const hasContract=!!meta.story_contract,hasPlan=!!meta.story_plan&&S.stories.length===15;
   const batchJob=S.storyBatch?.job||null;
-  const batchRunning=batchJob?.status==='running';
-  const batchPos=Number(batchJob?.current_position||0);
+  const activeStory=S.stories.find(x=>x.status==='generating');
+  const fullPipelineStoryRunning=r.status==='generating'&&stage==='story_generation'&&ready<15;
+  const batchRunning=batchJob?.status==='running'||fullPipelineStoryRunning;
+  const batchPos=Number(batchJob?.current_position||activeStory?.position||0);
   let taskTitle=nextAction(r),taskText='',taskButton='';
   if(stage==='new'){
     taskTitle='Buchproduktion starten';
@@ -384,9 +386,9 @@ function requestView(){
     }
   }else if(stage==='story_generation'){
     if(batchRunning){
-      taskTitle='Geschichten werden erstellt';
-      taskText=`${ready}/15 Geschichten fertig.${batchPos?' Aktuell wird Geschichte '+batchPos+' erstellt.':''} Die Produktion läuft serverseitig weiter.`;
-      taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Fortschritt öffnen</button>`;
+      taskTitle='Geschichten werden automatisch erstellt';
+      taskText=`${ready}/15 Geschichten fertig.${batchPos?' Aktuell wird Geschichte '+batchPos+' erstellt.':''} Die Produktion läuft serverseitig weiter – du musst nichts starten.`;
+      taskButton=`<button class="btn secondary" onclick="go('production',{id:'${esc(r.id)}'})">Live-Fortschritt ansehen</button>`;
     }else{
       taskTitle=failed?'Fehler automatisch beheben':'Geschichten erstellen';
       taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;
@@ -463,7 +465,8 @@ function productionView(){
   shell(true);activeNav('dashboard');if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
   const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
   const batchJob=S.storyBatch?.job||null,batchRunning=batchJob?.status==='running'||(S.request?.status==='generating'&&prodStage(S.request)==='story_generation'),batchPaused=batchJob?.status==='paused_quota',batchDoneErrors=batchJob?.status==='completed_with_errors';
-  const batchPos=Number(batchJob?.current_position||0),batchErr=batchJob?.last_error||{};
+  const activeStory=S.stories.find(x=>x.status==='generating');
+  const batchPos=Number(batchJob?.current_position||activeStory?.position||0),batchErr=batchJob?.last_error||{};
   const stage=prodStage(S.request),ideaMode=stage==='story_plan'||planned>0;$('#headerSub').textContent=ideaMode?'Story-Ideen':'Geschichten';
   const problemItems=S.stories.filter(x=>x.status==='failed'||x.status==='needs_review');
   main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button>

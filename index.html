@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.9-2026-08-14-full-pipeline-live-status';
+const APP_VERSION='workflow-v5.0-2026-08-14-print-pdf-auto';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -850,12 +850,12 @@ async function startReviewPdf(btn){
   finally{if(document.body.contains(btn))busy(btn,false)}
 }
 async function approveReviewPdf(btn){
-  if(!confirm('Hast du alle Geschichten und Bilder in der Review-PDF geprüft? Das finale Druck-PDF wird dadurch noch NICHT erstellt.'))return;
+  if(!confirm('Hast du alle Geschichten und Bilder in der Review-PDF geprüft? Nach der Freigabe startet das echte Buchlayout automatisch.'))return;
   try{
     busy(btn,true,'Freigabe wird gespeichert …');
     await invoke('story4kids-review-pdf',{action:'approve',request_id:S.request.id});
     await loadRequest(S.request.id);
-    toast('Review freigegeben. Als Nächstes kommt später das finale Drucklayout.','ok');
+    toast('Review freigegeben. Das Drucklayout wird jetzt automatisch erstellt.','ok');
     await bookView();
   }catch(e){toast(e.message,'err')}
   finally{if(document.body.contains(btn))busy(btn,false)}
@@ -879,9 +879,20 @@ async function bookView(){
   const failed=job?.status==='failed';
   const done=Number(job?.processed_stories||0),pct=Math.round((done/15)*100);
   const demo=String(S.request.metadata?.demo_workflow||'')==='true'||S.request.metadata?.demo_workflow===true;
+  const printPath=S.request.book_pdf_storage_path||null;
+  const printMeta=S.request.metadata?.print_pdf||{};
+  const printReady=!!printPath;
+  const printBuilding=approved&&!printReady;
   let reviewBlock='';
   if(reviewReady){
-    reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Öffne sie und prüfe Geschichten, Reihenfolge und alle ausgewählten Bilder.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>${approved?'<div class="rule ok"><b>Review freigegeben.</b><br>Das endgültige Drucklayout wird erst im nächsten technischen Schritt erstellt.</div><button class="btn" disabled>Finales Druck-PDF noch nicht erstellt</button>':'<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>'}`;
+    reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Öffne sie und prüfe Geschichten, Reihenfolge und alle ausgewählten Bilder.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>`;
+    if(!approved){
+      reviewBlock+=`<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>`;
+    }else if(printReady){
+      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Das endgültige Buchlayout ist fertig.</div><div class="book-preview"><div class="big">📘</div><b>Druck-PDF ist fertig</b><span>${esc(printMeta.page_count||'–')} Seiten · 8,5 × 8,5 Zoll · druckfertiger Innenteil</span></div><button class="btn ok" id="openPrintPdf">📘 Druck-PDF öffnen</button>`;
+    }else{
+      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Du musst nichts mehr starten.</div><div class="book-preview"><div class="big">⚙️</div><b>Buchlayout wird automatisch erstellt</b><span>Textsatz, Bilder, Seitenfolge und Drucklayout werden serverseitig vorbereitet. Du kannst die Seite schließen.</span></div><button class="btn" disabled>Druck-PDF wird erstellt …</button>`;
+    }
   }else if(running){
     reviewBlock=`<div class="book-preview"><div class="big">⚙️</div><b>Review-PDF wird erstellt</b><span>${done}/15 Geschichten verarbeitet${job.current_story_position?' · aktuell Geschichte '+job.current_story_position:''}. Das läuft serverseitig weiter.</span></div><div class="progress"><span style="width:${pct}%"></span></div><div class="small" style="margin-top:6px">${pct}% · Handy darf gesperrt werden</div><button class="btn" disabled>Review-PDF wird erstellt …</button>`;
   }else if(failed){
@@ -894,11 +905,12 @@ async function bookView(){
   }else{
     reviewBlock='<button class="btn" disabled>Review-PDF gesperrt - Inhalte fehlen</button>';
   }
-  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}</div>${reviewBlock}`;
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2>${demo?'<span class="pill warn">DEMO</span>':''}</div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}${approved?statusLine('Review freigegeben',true):''}${approved?statusLine('Druck-PDF erstellt',printReady):''}</div>${reviewBlock}`;
   if($('#startReviewPdf'))$('#startReviewPdf').onclick=e=>startReviewPdf(e.currentTarget);
   if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Druck-PDF wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
-  if(running)setTimeout(()=>{if(route()==='book')bookView()},5000);
+  if(running||printBuilding)setTimeout(async()=>{if(route()!=='book')return;try{if(printBuilding)await loadRequest(S.request.id);await bookView()}catch(e){}},5000);
 }
 
 async function maybeAdvanceToBookReview(){

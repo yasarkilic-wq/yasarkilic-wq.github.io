@@ -248,9 +248,13 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
     <div class="field hidden-hp"><label>Website</label><input name="website" autocomplete="off" tabindex="-1"></div>
     <input type="hidden" name="language" value="de-AT">
     <input type="hidden" name="length_preset" value="medium">
-    <input type="hidden" name="privacy_version" value="story4kids-v2-2026-08">
+    <input type="hidden" name="privacy_version" value="story4kids-v2.2-privacy-2026-08">
+    <div class="info" style="margin-top:16px"><strong>Datenschutzmodus:</strong> Kontaktdaten wie E-Mail, Telefon und Instagram bleiben bei Story4Kids. Für die KI-Erstellung werden direkte Identifikatoren pseudonymisiert: Der Kindername und genaue Ortsangaben werden vor der Übermittlung an die OpenAI API durch Platzhalter ersetzt und erst danach intern wieder eingesetzt. Echte Kinderfotos werden in diesem Modus nicht an die KI gesendet.</div>
     <div class="field" style="margin-top:16px">
       <label class="consent"><input type="checkbox" name="privacy_accepted" required><span>Ich bestätige, dass ich die genannten Angaben für die Erstellung des personalisierten Kinderbuchs übermitteln darf und die Datenschutzhinweise gelesen habe. <span class="req">*</span></span></label>
+    </div>
+    <div class="field">
+      <label class="consent"><input type="checkbox" name="ai_processing_accepted" required><span>Ich stimme zu, dass ausgewählte, pseudonymisierte Angaben für die Erstellung von Texten und Illustrationen über die OpenAI API verarbeitet werden. Direkte Kontaktdaten werden nicht an OpenAI übermittelt. <span class="req">*</span></span></label>
     </div>
     <button id="submitBtn" type="submit">Angaben an Story4Kids senden</button>
     <div id="status"></div>
@@ -341,8 +345,9 @@ form.addEventListener("submit", async (e) => {
     visual_style: document.querySelector('[name="visual_style"]:checked')?.value || "",
     language: "de-AT",
     length_preset: "medium",
-    privacy_version: "story4kids-v2-2026-08",
+    privacy_version: "story4kids-v2.2-privacy-2026-08",
     privacy_accepted: document.querySelector('[name="privacy_accepted"]').checked,
+    ai_processing_accepted: document.querySelector('[name="ai_processing_accepted"]').checked,
     website: val("website")
   };
 
@@ -373,6 +378,7 @@ form.addEventListener("submit", async (e) => {
       child_first_name_required: "Bitte gib den Vornamen des Kindes an.",
       invalid_child_age: "Bitte wähle das Alter des Kindes.",
       privacy_consent_required: "Bitte bestätige die Datenschutzzustimmung.",
+      ai_processing_consent_required: "Bitte bestätige die KI-Verarbeitung im Datenschutzmodus.",
       too_many_submissions: "Es wurden zu viele Formulare in kurzer Zeit gesendet. Bitte versuche es später noch einmal.",
       submission_failed: "Das Formular konnte gerade nicht gesendet werden."
     };

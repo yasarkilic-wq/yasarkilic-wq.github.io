@@ -301,7 +301,7 @@ function dashboardView(){
   <div class="form-cta"><b>Neuen echten Testauftrag anlegen</b><p>Fülle das Kundenformular wie ein Kunde aus. Danach erscheint der Auftrag automatisch hier.</p><button class="btn secondary" id="openCustomerForm">Kundenformular öffnen ↗</button></div>
   <div class="tabs"><button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${openCount}</button><button class="tab ${filter==='done'?'active':''}" data-filter="done">Abgeschlossen ${doneCount}</button><button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle</button></div>
   ${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div><div class="contact">${contactHtml(r)}</div><div class="order-progress"><span style="width:${bookProgressPercent(r)}%"></span></div><div class="order-meta"><span>${bookProgressPercent(r)}% Buchfortschritt</span><b>${esc(nextAction(r))} →</b></div></a>`).join(''):'<div class="empty">Noch kein Auftrag vorhanden. Öffne oben das Kundenformular.</div>'}`;
-  $('#openCustomerForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=1','_blank');
+  $('#openCustomerForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=5','_blank');
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>go('dashboard',{filter:b.dataset.filter}));
 }
 function phaseRow(icon,title,subtitle,state,routeName,done,current,locked=false){const href=routeName&&!locked?`href="#${routeName}"`:'';return `<a class="phase-row ${done?'done':''} ${current?'current':''} ${locked?'locked':''}" ${href}><div class="phase-icon">${done?'✓':icon}</div><div class="phase-main"><b>${esc(title)}</b><span>${esc(subtitle)}</span></div><div class="phase-state">${esc(state)}</div></a>`}
@@ -362,11 +362,14 @@ async function prepareRealOrder(btn){
     busy(btn,true,'Auftrag wird vorbereitet …');
     if(!S.request.metadata?.story_contract){await invoke('build-story-contract',{request_id:S.request.id});await loadRequest(S.request.id)}
     if(!S.readiness)await loadReadiness();
-    if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){
-      toast('Kundendaten & Story Contract sind gespeichert. Für die 15 Story-Ideen fehlt noch die sichere KI-Verbindung.','err');
+    if(!S.request.metadata?.consent?.ai_processing_accepted){
+      toast('Für diesen Auftrag fehlt noch die neue KI-Zustimmung im Kundenformular. Bitte den Testauftrag mit dem aktuellen Formular neu senden.','err');
       await loadRequest(S.request.id);requestView();return;
     }
-    if(!S.request.metadata?.story_plan){await invoke('plan-request-stories',{request_id:S.request.id})}
+    if(!S.readiness?.ai_production_ready){
+      toast('OpenAI API-Key fehlt noch.','err');await loadRequest(S.request.id);requestView();return;
+    }
+    if(!S.request.metadata?.story_plan){await invoke('story4kids-private-ai',{action:'plan',request_id:S.request.id})}
     await invoke('materialize-request-stories',{request_id:S.request.id});
     await loadRequest(S.request.id);
     await updateProductionStage(S.request.id,'story_plan');
@@ -404,14 +407,14 @@ function productionView(){
 }
 async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('manage-request-story-item',{request_id:S.request.id,position,action:'approve'});await loadStories();if(!S.stories.some(x=>x.status==='planned'))await updateProductionStage(S.request.id,'story_generation');toast('Story-Idee freigegeben.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();await updateProductionStage(S.request.id,'story_generation');toast('Alle Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
-async function generateAllStories(){const b=$('#generateAll');if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length}: Geschichte erzeugen …`;try{await invoke('generate-request-story-item',{request_id:S.request.id,position:items[i].position,request_key:'web-'+crypto.randomUUID()})}catch(e){errors++}}await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');toast(errors?`${items.length-errors} fertig, ${errors} mit Fehler.`:'Alle Geschichten sind fertig.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function generateAllStories(){const b=$('#generateAll');if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length}: Geschichte erzeugen …`;try{await invoke('story4kids-private-ai',{action:'story',request_id:S.request.id,position:items[i].position,request_key:'web-'+crypto.randomUUID()})}catch(e){errors++}}await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');toast(errors?`${items.length-errors} fertig, ${errors} mit Fehler.`:'Alle Geschichten sind fertig.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 function renderStoryActions(s){
-  let h='',aiReady=!!S.readiness?.openai_api_key_configured&&!!S.readiness?.openai_zdr_confirmed;
+  let h='',aiReady=!!S.readiness?.ai_production_ready;
   if(s.status==='planned'){
     h+=`<button class="btn ok" id="approveStory">Idee freigeben</button><button class="btn secondary" id="replaceStory">Idee ersetzen</button>`;
   }else if(s.status==='failed'&&s.approved_at){
     h+=`<div class="rule red"><b>KI-Erstellung fehlgeschlagen.</b><br>${esc(s.generation_error?.provider?.error||'Bitte Systemstatus prüfen.')}</div>`;
-    h+=aiReady?`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> OpenAI API-Key und ZDR müssen bereit sein, bevor du erneut startest.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
+    h+=aiReady?`<button class="btn" id="generateStory">Geschichte erneut erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Der OpenAI API-Key muss bereit sein. Der Datenschutzmodus pseudonymisiert direkte Identifikatoren.</div><button class="btn" disabled>Geschichte erzeugen</button>`;
     h+=`<button class="btn secondary" id="replaceStory">Story-Idee ändern</button>`;
   }else if(s.status==='approved'){
     h+=aiReady?`<button class="btn" id="generateStory">800-Wörter-Geschichte erzeugen</button>`:`<div class="rule warn"><b>KI noch nicht eingerichtet.</b> Sobald OpenAI bereit ist, wird dieser Knopf freigeschaltet.</div><button class="btn" disabled>800-Wörter-Geschichte erzeugen</button>`;
@@ -434,9 +437,9 @@ function replaceStorySheet(s){
   <label>Optionaler Wunsch</label><textarea id="replaceHint" placeholder="z. B. lieber Wald, mehr Humor, mehr Flocki"></textarea>
   <button class="btn" id="doReplace">Neue Idee erzeugen</button>`;
   modal.classList.add('open');
-  $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('replace-request-story-item',{request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
+  $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('story4kids-private-ai',{action:'replace_plan',request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
-async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
+async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('story4kids-private-ai',{action:'story',request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
 }
 async function loadStoryOutput(s){
   const pages=await rest('story_pages?select=page_number,text_content,illustration_prompt&project_id=eq.'+encodeURIComponent(s.story_project_id)+'&order=page_number.asc');
@@ -459,7 +462,7 @@ async function charactersView(){
   if($('#approveAllChars'))$('#approveAllChars').onclick=approveAllCharacters;
   await renderCharacters();
 }
-async function generateAllCharacters(){const b=$('#generateAllChars');if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}const items=S.characters.filter(x=>x.status==='draft');let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} Referenz …`;try{await invoke('generate-character-reference',{character_id:items[i].id,regenerate:false})}catch(e){errors++}}await loadCharacters();toast(errors?`${errors} Referenzen mit Fehler.`:'Referenzen erzeugt.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function generateAllCharacters(){const b=$('#generateAllChars');if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}const items=S.characters.filter(x=>x.status==='draft');let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} Referenz …`;try{await invoke('story4kids-private-ai',{action:'character_reference',request_id:S.request.id,character_id:items[i].id,regenerate:false})}catch(e){errors++}}await loadCharacters();toast(errors?`${errors} Referenzen mit Fehler.`:'Referenzen erzeugt.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function approveAllCharacters(){const b=$('#approveAllChars'),items=S.characters.filter(x=>x.status==='reference_ready');try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`${i+1}/${items.length} freigeben …`;await invoke('manage-character-bible',{character_id:items[i].id,action:'approve'})}await loadCharacters();if(S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast('Alle Figuren freigegeben.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function renderCharacters(){
   const box=$('#characterList');if(!box)return;
@@ -484,7 +487,7 @@ async function renderCharacters(){
   document.querySelectorAll('[data-reopen]').forEach(b=>b.onclick=()=>manageCharacter(b.dataset.reopen,'reopen',b));
 }
 async function generateCharacter(id,regenerate,b){
-  try{busy(b,true,'Bild wird erzeugt …');await invoke('generate-character-reference',{character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+  try{busy(b,true,'Bild wird erzeugt …');await invoke('story4kids-private-ai',{action:'character_reference',request_id:S.request.id,character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function manageCharacter(id,action,b){
   try{busy(b,true);await invoke('manage-character-bible',{character_id:id,action});await loadCharacters();if(action==='approve'&&S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast(action==='approve'?'Referenz freigegeben.':'Referenz wieder geöffnet.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
@@ -538,7 +541,7 @@ async function renderScenes(story,scenes){
   document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>selectVariant(b.dataset.select,b));
 }
 async function generateVariants(sceneId,regenerate,b){
-  try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('generate-story-image-variants',{scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+  try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('story4kids-private-ai',{action:'scene_variants',request_id:S.request.id,scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function selectVariant(id,b){
   try{busy(b,true,'Auswählen …');await invoke('select-story-image-variant',{variant_id:id});toast('Bild ausgewählt.','ok');await scenesView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
@@ -560,15 +563,15 @@ function shippingSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML
 
 async function settingsView(){
   shell(true);$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
-  const x=S.readiness||{},aiKey=!!x.openai_api_key_configured,zdr=!!x.openai_zdr_confirmed,aiReady=aiKey&&zdr;
+  const x=S.readiness||{},aiKey=!!x.openai_api_key_configured,zdr=!!x.openai_zdr_confirmed,privacy=!!x.privacy_mode_active,aiReady=!!x.ai_production_ready;
   main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Aufträge</button><h2>Einstellungen</h2>
-  <div class="section-title">KI-Verbindung</div><div class="card">${statusLine('OpenAI API-Key',aiKey)}${statusLine('Zero Data Retention',zdr)}${statusLine('KI-Produktion',aiReady)}</div>
-  ${!aiReady?`<div class="rule warn"><b>Für echte Kinderdaten bleibt die KI bewusst gesperrt.</b><br>${!aiKey?'1. OPENAI_API_KEY als Supabase Edge-Function-Secret hinterlegen.<br>':''}${!zdr?'2. Erst wenn Zero Data Retention bei OpenAI wirklich aktiviert ist, OPENAI_ZDR_CONFIRMED=true setzen.':''}</div>`:'<div class="rule ok"><b>KI ist bereit.</b><br>Storyplanung, Geschichten und Bilder können über den normalen Auftrag erzeugt werden.</div>'}
+  <div class="section-title">KI-Verbindung</div><div class="card">${statusLine('OpenAI API-Key',aiKey)}${statusLine('Datenschutzmodus',privacy)}${statusLine('KI-Produktion',aiReady)}<div class="statusline"><b>Zero Data Retention</b><span class="${zdr?'yes':'mini'}">${zdr?'✓ zusätzlich aktiv':'optional · noch nicht aktiv'}</span></div></div>
+  ${aiReady?`<div class="rule ok"><b>KI ist bereit – Datenschutzmodus aktiv.</b><br>Kontaktangaben bleiben in Supabase. Der Kindername und genaue Ortsangaben werden vor OpenAI durch Platzhalter ersetzt und erst danach intern wieder eingesetzt. Hochgeladene echte Kinderfotos bleiben ohne ZDR gesperrt.</div>`:`<div class="rule warn"><b>KI noch nicht bereit.</b><br>OPENAI_API_KEY muss als Supabase Edge-Function-Secret vorhanden sein.</div>`}
   <button class="btn secondary" id="refreshAI">Status neu prüfen</button>
   <div class="section-title">Kundenformular</div><div class="card"><b>Live-Testformular</b><div class="desc">Neue Formulareingaben erscheinen automatisch als neuer Auftrag.</div><button class="btn secondary" id="settingsForm">Formular öffnen ↗</button></div>
   <div class="section-title">Passwort</div><details class="overview-card"><summary><div class="row"><b>Passwort ändern</b><span class="chev">⌄</span></div></summary><div class="inside"><label>Neues Passwort</label><input type="password" id="newPass" minlength="10" placeholder="mindestens 10 Zeichen"><label>Noch einmal</label><input type="password" id="newPass2" minlength="10"><button class="btn" id="changePass">Passwort ändern</button></div></details>`;
   $('#refreshAI').onclick=async e=>{try{busy(e.currentTarget,true,'Prüfen …');S.readiness=null;await loadReadiness();toast('KI-Status aktualisiert.','ok');settingsView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
-  $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=1','_blank');
+  $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=5','_blank');
   if($('#changePass'))$('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 function statusLine(name,ok){return `<div class="statusline"><b>${esc(name)}</b><span class="${ok?'yes':'no'}">${ok?'✓ bereit':'✕ fehlt'}</span></div>`}

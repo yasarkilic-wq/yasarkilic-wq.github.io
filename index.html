@@ -130,7 +130,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v4.6.1-2026-08-14-direct-github-deploy';
+const APP_VERSION='workflow-v4.7-2026-08-14-full-server-pipeline';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -232,13 +232,9 @@ async function openPrivatePdf(path){
   if(!path)throw new Error('Keine PDF-Datei vorhanden');
   const popup=window.open('','_blank');
   try{
-    const clean=path.split('/').map(encodeURIComponent).join('/');
-    const r=await authFetch(SB_URL+'/storage/v1/object/authenticated/story-assets/'+clean);
-    if(!r.ok)throw new Error('Druck-PDF konnte nicht geladen werden');
-    const blob=await r.blob();
-    const u=URL.createObjectURL(blob.type==='application/pdf'?blob:new Blob([blob],{type:'application/pdf'}));
-    if(popup){popup.location.href=u}else{location.href=u}
-    setTimeout(()=>URL.revokeObjectURL(u),120000);
+    const d=await invoke('story4kids-private-pdf-link',{path});
+    if(!d?.url)throw new Error('Privater PDF-Link konnte nicht erstellt werden');
+    if(popup){popup.location.href=d.url}else{location.href=d.url}
   }catch(e){try{popup?.close()}catch{}throw e}
 }
 

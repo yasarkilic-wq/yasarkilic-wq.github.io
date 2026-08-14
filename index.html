@@ -94,6 +94,13 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 .print-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px;margin-bottom:9px}.print-card .btn{margin-top:10px}
 .sectionlink{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px;margin-bottom:8px}.sectionlink b{font-size:13px;color:var(--navy)}.sectionlink span{font-size:11px;color:var(--muted)}
 
+
+.taskbox{background:linear-gradient(145deg,#173957,#2c6387);color:#fff;border-radius:21px;padding:16px;margin:10px 0 14px;box-shadow:0 12px 28px #17395725}.taskbox .eyebrow{font-size:9px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;opacity:.7}.taskbox h3{font-size:18px;margin:5px 0 4px}.taskbox p{font-size:11px;line-height:1.4;margin:0;opacity:.82}.taskbox .btn{background:#fff;color:var(--navy);margin-top:12px}.phase-list{display:grid;gap:7px}.phase-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px;text-decoration:none;color:inherit}.phase-row.current{border-color:#9cb3c5;box-shadow:0 0 0 2px #1739570d}.phase-row.locked{opacity:.58}.phase-icon{width:34px;height:34px;border-radius:11px;background:#eef2f4;display:grid;place-items:center;font-size:13px;font-weight:950;color:var(--navy)}.phase-row.done .phase-icon{background:#e5f4ed;color:var(--ok)}.phase-row.current .phase-icon{background:var(--navy);color:#fff}.phase-main b{display:block;font-size:12px;color:var(--navy)}.phase-main span{font-size:10px;color:var(--muted);line-height:1.35}.phase-state{font-size:10px;font-weight:900;color:var(--muted);text-align:right}.phase-row.done .phase-state{color:var(--ok)}.phase-row.current .phase-state{color:var(--navy)}
+.order-progress{height:6px;background:#eee6da;border-radius:99px;overflow:hidden;margin-top:9px}.order-progress span{height:100%;display:block;background:var(--navy)}.order-meta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:9px;color:var(--muted)}
+.summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.summary-tile{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px}.summary-tile strong{display:block;font-size:19px;color:var(--navy)}.summary-tile span{font-size:10px;color:var(--muted)}
+.inline-note{font-size:10px;color:var(--muted);line-height:1.45;margin-top:8px}.backline{border:0;background:none;color:var(--navy);font-size:11px;font-weight:850;padding:4px 0 10px}.book-preview{border:1.5px dashed #cbbca7;background:#fffdf8;border-radius:19px;padding:22px 15px;text-align:center}.book-preview .big{font-size:31px;margin-bottom:6px}.book-preview b{display:block;color:var(--navy);margin-bottom:4px}.book-preview span{font-size:11px;color:var(--muted)}
+.issuebox{background:#fff7e8;border:1px solid #ead0a0;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.issuebox b{color:#85560d}.okbox{background:#edf8f3;border:1px solid #cce6db;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.okbox b{color:var(--ok)}
+
 @media(min-width:700px){.app{margin-top:18px;margin-bottom:18px;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden}.bottomnav{bottom:18px;border-radius:0 0 26px 26px}}
 </style>
 </head>
@@ -119,11 +126,12 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
+const APP_VERSION='workflow-v3-2026-08-13';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
 const S={
-  session:null, requests:[], request:null, stories:[], characters:[], scenes:{}, variants:{}, readiness:null,
+  session:null, requests:[], request:null, stories:[], characters:[], requestScenes:[], scenes:{}, variants:{}, readiness:null,
   imageUrls:new Map(), currentStory:null
 };
 
@@ -134,22 +142,23 @@ function esc(v=''){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function statusLabel(s){return ({planned:'offen',approved:'freigegeben',generating:'wird erzeugt',ready:'fertig',needs_review:'prüfen',failed:'Fehler',cancelled:'abgebrochen',draft:'Entwurf',reference_ready:'Referenz prüfen',review:'Varianten prüfen',selected:'ausgewählt',candidate:'Variante',rejected:'verworfen'})[s]||s||'—'}
 function pillClass(s){return ['approved','ready','selected'].includes(s)?'ok':['failed','cancelled'].includes(s)?'red':['generating','reference_ready','review'].includes(s)?'blue':'warn'}
 function prodStage(r){
-  const m=r?.metadata||{}; if(m.production_stage)return m.production_stage;
-  if(r?.status==='completed')return 'printed'; if(r?.status==='ready')return 'book_review'; if(r?.status==='generating')return 'ai'; if(r?.status==='in_review')return 'preparation'; return 'new';
+  const raw=r?.production_stage||r?.metadata?.production_stage||'';
+  return ({preparation:'story_plan',ai:'story_generation'})[raw]||raw||(r?.status==='completed'?'completed':r?.status==='ready'?'book_review':r?.status==='generating'?'story_generation':r?.status==='in_review'?'story_plan':'new');
 }
-const STAGES=['new','preparation','ai','book_review','print_ready','printing','printed'];
-function stageLabel(s){return ({new:'Neu',preparation:'Vorbereitung',ai:'KI-Erstellung',book_review:'Buchprüfung',print_ready:'Druckbereit',printing:'Im Druck',printed:'Gedruckt'})[s]||s}
-function stageClass(s){return ['printed','print_ready'].includes(s)?'ok':s==='printing'?'blue':s==='book_review'?'warn':''}
+const STAGES=['new','story_plan','story_generation','characters','illustrations','book_review','print_ready','printing','printed','shipped','completed'];
+const BOOK_STAGES=['new','story_plan','story_generation','characters','illustrations','book_review'];
+function stageLabel(s){return ({new:'Neu',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Buchprüfung',print_ready:'Druckbereit',printing:'Im Druck',printed:'Gedruckt',shipped:'Versendet',completed:'Abgeschlossen',cancelled:'Abgebrochen'})[s]||s}
+function stageClass(s){return ['completed','printed','shipped','print_ready'].includes(s)?'ok':s==='printing'?'blue':s==='book_review'?'warn':''}
 function contactInfo(r){
   const m=r?.metadata||{},c=m.contact||{};
   const instagram=c.instagram||c.instagram_name||m.instagram||m.instagram_name||m.instagram_handle||'';
   const preferred=c.preferred||c.preferred_channel||m.preferred_contact||'';
   return {email:r?.customer_email||c.email||'',phone:r?.customer_phone||c.phone||'',instagram,preferred};
 }
-function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram.replace(/^@/,''))}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
-function nextAction(r){const s=prodStage(r);return ({new:'Auftrag prüfen',preparation:'Story-Ideen freigeben',ai:'KI-Erstellung prüfen',book_review:'Buch prüfen',print_ready:'Zum Druck geben',printing:'Druckstatus prüfen',printed:'Abgeschlossen'})[s]||'Öffnen'}
+function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
+function nextAction(r){const s=prodStage(r);return ({new:'Auftrag prüfen',story_plan:'Story-Ideen freigeben',story_generation:'Geschichten erstellen',characters:'Figuren festlegen',illustrations:'Illustrationen erstellen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
-function workflowHtml(r){const cur=stageIndex(prodStage(r));return `<div class="workflow">${STAGES.map((s,i)=>`<div class="step ${i<cur?'done':i===cur?'now':'future'}">${i<cur?'✓ ':''}${stageLabel(s)}</div>`).join('')}</div>`}
+function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
 
 function toast(msg,type=''){toastEl.textContent=msg;toastEl.className='toast show '+type;clearTimeout(window._tt);window._tt=setTimeout(()=>toastEl.className='toast',4200)}
 function busy(btn,on,label='Bitte warten …'){if(!btn)return; if(on){btn.dataset.old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spinner"></span>'+esc(label)}else{btn.disabled=false;btn.innerHTML=btn.dataset.old||btn.innerHTML}}
@@ -209,24 +218,33 @@ async function privateImage(path){
 }
 
 async function loadRequests(){
-  S.requests=await rest('customer_requests?select=id,status,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at&order=submitted_at.desc&limit=50');
+  S.requests=await rest('customer_requests?select=id,status,production_stage,customer_name,customer_email,customer_phone,child_first_name,child_age,language,theme,occasion,interests,story_wishes,moral_or_message,dedication,metadata,source,submitted_at,updated_at,book_approved_at,book_pdf_storage_path,print_provider,print_order_number,print_ordered_at,printed_at,shipping_tracking,shipped_at,completed_at&order=submitted_at.desc&limit=50');
   if(S.request){const x=S.requests.find(r=>r.id===S.request.id);if(x)S.request=x}
 }
 async function loadRequest(id){
   const rows=await rest('customer_requests?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!rows.length)throw new Error('Auftrag nicht gefunden');
   S.request=rows[0];
   await Promise.all([loadStories(),loadCharacters()]);
+  await loadRequestScenes();
 }
 async function loadStories(){if(!S.request)return;S.stories=await rest('customer_request_stories?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=position.asc')}
 async function loadCharacters(){if(!S.request)return;S.characters=await rest('customer_request_characters?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=created_at.asc')}
 async function loadScenes(storyId){S.scenes[storyId]=await rest('customer_request_story_scenes?select=*&request_story_id=eq.'+encodeURIComponent(storyId)+'&order=scene_index.asc');return S.scenes[storyId]}
 async function loadVariants(sceneId){S.variants[sceneId]=await rest('story_image_variants?select=*&scene_id=eq.'+encodeURIComponent(sceneId)+'&order=variant_index.asc');return S.variants[sceneId]}
+async function loadRequestScenes(){const ids=S.stories.map(x=>x.id);if(!ids.length){S.requestScenes=[];return S.requestScenes}const f=ids.join(',');S.requestScenes=await rest('customer_request_story_scenes?select=*&request_story_id=in.('+f+')&order=request_story_id.asc,scene_index.asc');return S.requestScenes}
 async function loadReadiness(){try{S.readiness=await invoke('story4kids-readiness',{})}catch(e){S.readiness={error:e.message}}}
-async function updateProductionStage(requestId,stage){
+async function updateProductionStage(requestId,stage,extra={}){
   const r=S.requests.find(x=>x.id===requestId)||S.request;if(!r)throw new Error('Auftrag nicht gefunden');
-  const metadata={...(r.metadata||{}),production_stage:stage,production_stage_updated_at:new Date().toISOString()};
-  if(stage==='printed')metadata.printed_at=new Date().toISOString();
-  await rest('customer_requests?id=eq.'+encodeURIComponent(requestId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({metadata})});
+  const now=new Date().toISOString();
+  const metadata={...(r.metadata||{}),production_stage:stage,production_stage_updated_at:now};
+  const status=stage==='completed'?'completed':stage==='cancelled'?'cancelled':['story_generation','characters','illustrations'].includes(stage)?'generating':['book_review','print_ready','printing','printed','shipped'].includes(stage)?'ready':stage==='new'?'new':'in_review';
+  const body={production_stage:stage,status,metadata,...extra};
+  if(stage==='print_ready'&&!r.book_approved_at)body.book_approved_at=now;
+  if(stage==='printing'&&!r.print_ordered_at)body.print_ordered_at=now;
+  if(stage==='printed'&&!r.printed_at)body.printed_at=now;
+  if(stage==='shipped'&&!r.shipped_at)body.shipped_at=now;
+  if(stage==='completed'&&!r.completed_at)body.completed_at=now;
+  await rest('customer_requests?id=eq.'+encodeURIComponent(requestId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(body)});
   await loadRequests();if(S.request?.id===requestId)await loadRequest(requestId);
 }
 function activeNav(name){document.querySelectorAll('[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===name))}
@@ -256,59 +274,47 @@ function loginView(){
 function dashboardView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Aufträge';
   const filter=query().get('filter')||'open';
-  const groups={open:['new','preparation'],book:['ai','book_review'],print:['print_ready','printing'],done:['printed']};
-  const visible=S.requests.filter(r=>filter==='all'||(groups[filter]||[]).includes(prodStage(r)));
-  const cnt=k=>S.requests.filter(r=>(groups[k]||[]).includes(prodStage(r))).length;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Aufträge</h2><div class="small">Jeder Kunde bleibt komplett in seinem Auftrag.</div></div><span class="pill">${S.requests.length}</span></div>
-  <div class="tabs">
-   <button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${cnt('open')}</button>
-   <button class="tab ${filter==='book'?'active':''}" data-filter="book">Bucharbeit ${cnt('book')}</button>
-   <button class="tab ${filter==='print'?'active':''}" data-filter="print">Druck ${cnt('print')}</button>
-   <button class="tab ${filter==='done'?'active':''}" data-filter="done">Fertig ${cnt('done')}</button>
-   <button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle</button>
-  </div>
-  <div id="requestList">${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}">
-    <div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div>
-    <div class="contact">${contactHtml(r)}</div>
-    <div class="next"><b>→ ${esc(nextAction(r))}</b><span class="mini">Auftrag öffnen</span></div>
-  </a>`).join(''):'<div class="empty">In diesem Bereich gibt es gerade keine Aufträge.</div>'}</div>`;
+  const visible=S.requests.filter(r=>filter==='all'||(filter==='done'?prodStage(r)==='completed':!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))));
+  const openCount=S.requests.filter(r=>!['print_ready','printing','printed','shipped','completed'].includes(prodStage(r))).length;
+  const doneCount=S.requests.filter(r=>prodStage(r)==='completed').length;
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Aufträge</h2><div class="small">Ein Kunde = ein kompletter Buchauftrag.</div></div><span class="pill">${S.requests.length}</span></div>
+  <div class="tabs"><button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${openCount}</button><button class="tab ${filter==='done'?'active':''}" data-filter="done">Abgeschlossen ${doneCount}</button><button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle</button></div>
+  ${visible.length?visible.map(r=>`<a class="order-card" href="#request?id=${esc(r.id)}"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.child_age)} Jahre</div><div class="desc">${esc(r.customer_name)}</div></div><span class="pill ${stageClass(prodStage(r))}">${esc(stageLabel(prodStage(r)))}</span></div><div class="contact">${contactHtml(r)}</div><div class="order-progress"><span style="width:${bookProgressPercent(r)}%"></span></div><div class="order-meta"><span>Buchfortschritt ${bookProgressPercent(r)}%</span><span>${esc(nextAction(r))} →</span></div></a>`).join(''):'<div class="empty">Hier gibt es gerade keine Aufträge.</div>'}`;
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>go('dashboard',{filter:b.dataset.filter}));
 }
-
+function phaseRow(icon,title,subtitle,state,routeName,done,current,locked=false){const href=routeName&&!locked?`href="#${routeName}"`:'';return `<a class="phase-row ${done?'done':''} ${current?'current':''} ${locked?'locked':''}" ${href}><div class="phase-icon">${done?'✓':icon}</div><div class="phase-main"><b>${esc(title)}</b><span>${esc(subtitle)}</span></div><div class="phase-state">${esc(state)}</div></a>`}
 function requestView(){
-  shell(true);activeNav('dashboard');$('#headerSub').textContent='Auftrag';
-  const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
-  const meta=r.metadata||{}, child=meta.child_profile||{}, app=meta.appearance||{};
-  const approved=S.stories.filter(x=>x.status==='approved'||x.approved_at).length,ready=S.stories.filter(x=>x.status==='ready').length;
-  const stage=prodStage(r),next=nextAction(r);
-  let nextButton='';
-  if(stage==='new')nextButton=`<button class="btn" id="startPrep">Auftrag geprüft – Storyplanung öffnen</button>`;
-  else if(stage==='preparation')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">15 Story-Ideen prüfen</button>`;
-  else if(stage==='ai')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Geschichten & Fehler prüfen</button>`;
-  else if(stage==='book_review')nextButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Buchprüfung öffnen</button>`;
-  else if(stage==='print_ready')nextButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
-  else if(stage==='printing')nextButton=`<button class="btn" onclick="go('print')">Druckstatus öffnen</button>`;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">Auftrag von ${esc(r.customer_name)}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div>
-  ${workflowHtml(r)}
-  <div class="nextbox"><h3>Nächster Schritt: ${esc(next)}</h3><p>Du arbeitest immer nur innerhalb dieses einen Kundenauftrags.</p>${nextButton}</div>
-  <div class="section-title">Kontakt</div>
-  <div class="card"><div class="contact">${contactHtml(r)}</div><div class="desc" style="margin-top:8px">Instagram, Telefon und bevorzugter Kontakt werden künftig direkt aus dem Kundenformular übernommen.</div></div>
-  <div class="section-title">Kind & Personalisierung</div>
-  <div class="card kv">
-    <b>Alter</b><span>${esc(r.child_age)} Jahre</span>
-    <b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span>
-    <b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span>
-    <b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span>
-    <b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span>
-    <b>Moral</b><span>${esc(r.moral_or_message||'—')}</span>
+  shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
+  $('#headerSub').textContent=esc(r.child_first_name)+' · Auftrag';
+  const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{},stage=prodStage(r);
+  const planned=S.stories.filter(x=>x.status==='planned').length,approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length,ready=S.stories.filter(x=>x.status==='ready').length,failed=S.stories.filter(x=>x.status==='failed').length;
+  const charApproved=S.characters.filter(x=>x.status==='approved').length,charTotal=S.characters.length;
+  const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,sceneTotal=S.requestScenes.length;
+  const sceneStories=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  let taskTitle=nextAction(r),taskText='',taskButton='';
+  if(stage==='new'){taskText='Kundendaten kurz kontrollieren. Danach startet die Storyplanung.';taskButton='<button class="btn" id="startPrep">Auftrag geprüft – weiter</button>'}
+  else if(stage==='story_plan'){taskText=`${planned} Story-Ideen warten noch auf deine Freigabe. Du siehst nur diesen Auftrag.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Ideen prüfen</button>`}
+  else if(stage==='story_generation'){taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' mit Fehler':''}.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Geschichten erstellen / prüfen</button>`}
+  else if(stage==='characters'){taskText=`${charApproved}/${charTotal||'–'} Figuren freigegeben. Diese Referenzen halten die Bilder konsistent.`;taskButton=`<button class="btn" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren bearbeiten</button>`}
+  else if(stage==='illustrations'){taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Die 15 Storys bleiben dabei getrennt.`;taskButton=`<button class="btn" onclick="go('illustrations',{id:'${esc(r.id)}'})">Illustrationen öffnen</button>`}
+  else if(stage==='book_review'){taskText='Alle Inhalte werden für das fertige Buch zusammengeführt. Druck wird erst freigegeben, wenn das echte PDF vorhanden ist.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buchprüfung öffnen</button>`}
+  else if(['print_ready','printing','printed','shipped'].includes(stage)){taskText='Die Buchdatei ist fertig. Ab hier geht es nur noch um Druck und Versand.';taskButton=`<button class="btn" onclick="go('print')">Druckbereich öffnen</button>`}
+  else {taskText='Dieser Auftrag ist abgeschlossen.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
+  const issues=failed;
+  main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button><div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div><div class="contact">${contactHtml(r)}</div>
+  <div class="taskbox"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
+  ${issues?`<div class="issuebox"><b>${issues} Problem${issues===1?'':'e'} erkannt</b><br>Fehlgeschlagene KI-Versuche werden im Bereich Geschichten angezeigt.</div>`:''}
+  <div class="section-title">Buch-Fortschritt</div><div class="phase-list">
+    ${phaseRow('1','Auftrag & Kundendaten','Formular, Kontakt und Personalisierung','✓',null,true,stage==='new')}
+    ${phaseRow('2','Story-Ideen',`${approved}/15 freigegeben · ${planned} offen`,approved===15?'fertig':`${approved}/15`,`production?id=${esc(r.id)}`,approved===15,stage==='story_plan')}
+    ${phaseRow('3','Geschichten',`${ready}/15 fertig${failed?' · '+failed+' Fehler':''}`,ready===15?'fertig':`${ready}/15`,`production?id=${esc(r.id)}`,ready===15,stage==='story_generation',approved<15)}
+    ${phaseRow('4','Figuren',charTotal?`${charApproved}/${charTotal} Referenzen freigegeben`:'Character Bible noch nicht erstellt',charTotal&&charApproved===charTotal?'fertig':charTotal?`${charApproved}/${charTotal}`:'offen',`characters?id=${esc(r.id)}`,charTotal>0&&charApproved===charTotal,stage==='characters',ready<15)}
+    ${phaseRow('5','Illustrationen',sceneTotal?`${selected}/${sceneTotal} Szenen ausgewählt · ${sceneStories}/15 Storys vorbereitet`:'Noch keine Bildszenen vorbereitet',sceneTotal&&selected===sceneTotal&&sceneStories===15?'fertig':sceneTotal?`${selected}/${sceneTotal}`:'offen',`illustrations?id=${esc(r.id)}`,sceneTotal>0&&selected===sceneTotal&&sceneStories===15,stage==='illustrations',ready<15||!charTotal||charApproved<charTotal)}
+    ${phaseRow('6','Fertiges Buch',r.book_pdf_storage_path?'Druck-PDF vorhanden':'Layout/PDF noch nicht erstellt',r.book_pdf_storage_path?'PDF fertig':'wartet',`book?id=${esc(r.id)}`,!!r.book_pdf_storage_path,stage==='book_review',selected!==sceneTotal||sceneStories<15)}
   </div>
-  <div class="section-title">Dieser Auftrag</div>
-  <a class="sectionlink" href="#production?id=${esc(r.id)}"><div><b>Story-Plan & Geschichten</b><br><span>${approved}/15 Ideen freigegeben · ${ready}/15 Geschichten fertig</span></div><strong>›</strong></a>
-  <a class="sectionlink" href="#characters?id=${esc(r.id)}"><div><b>Figuren & Referenzen</b><br><span>${S.characters.length} Figuren in diesem Auftrag</span></div><strong>›</strong></a>
-  <button class="btn soft" onclick="showContract()">Story Contract ansehen</button>`;
-  if($('#startPrep'))$('#startPrep').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(r.id,'preparation');toast('Auftrag ist jetzt in Vorbereitung.','ok');go('production',{id:r.id})}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  <div class="section-title">Kundendaten</div><details class="card"><summary><b>Details anzeigen</b> <span class="small">· nur wenn du sie brauchst</span></summary><div class="kv" style="margin-top:12px"><b>Alter</b><span>${esc(r.child_age)} Jahre</span><b>Interessen</b><span>${esc((r.interests||[]).join(', ')||'—')}</span><b>Charakter</b><span>${esc((child.traits||[]).join(', ')||child.personality_notes||'—')}</span><b>Aussehen</b><span>${esc([app.hair,app.eyes,app.distinctive_features,app.typical_clothing].filter(Boolean).join(' · ')||'—')}</span><b>Wünsche</b><span>${esc(r.story_wishes||'—')}</span><b>Moral</b><span>${esc(r.moral_or_message||'—')}</span></div><button class="btn soft" onclick="showContract()">Story Contract ansehen</button></details>`;
+  if($('#startPrep'))$('#startPrep').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(r.id,'story_plan');toast('Storyplanung ist geöffnet.','ok');go('production',{id:r.id})}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
-
 window.showContract=function(){
   const c=S.request?.metadata?.story_contract;
   sheet.innerHTML=`<div class="row"><h2>Story Contract</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div>
@@ -318,45 +324,24 @@ window.showContract=function(){
 }
 
 function productionView(){
-  shell(true);activeNav('dashboard');$('#headerSub').textContent='Story-Freigabe';
-  if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.status==='approved'||x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Story-Plan</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">${S.stories.length}/15</span></div>
-  <div class="card"><div class="row"><div><b style="font-size:13px">Schnellfreigabe</b><div class="desc">Du musst nicht jede Story einzeln öffnen. Titel, Problem und Ort reichen für die erste Freigabe.</div></div></div>
-  <div class="checks"><span class="check ${S.stories.length===15?'ok':'warn'}">${S.stories.length}/15 geplant</span><span class="check ${fail?'warn':'ok'}">${fail?fail+' Fehler':'keine Generierungsfehler'}</span><span class="check">${rd}/15 fertig</span></div>
-  ${planned?'<button class="btn ok" id="approveAll">Alle offenen Story-Ideen freigeben</button>':''}</div>
-  <div id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div>
-    <div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut erzeugen</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details / ändern</button></div></div>`}).join('')}</div>`;
+  shell(true);activeNav('dashboard');if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
+  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length,gen=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at)).length;
+  const stage=prodStage(S.request);$('#headerSub').textContent=stage==='story_plan'?'Story-Ideen':'Geschichten';
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">${stage==='story_plan'?'Story-Ideen freigeben':'Geschichten erstellen'}</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">${S.stories.length}/15</span></div>
+  <div class="summary-grid"><div class="summary-tile"><strong>${ap}/15</strong><span>Ideen freigegeben</span></div><div class="summary-tile"><strong>${rd}/15</strong><span>Geschichten fertig</span></div></div>
+  ${fail?`<div class="issuebox" style="margin-top:9px"><b>${fail} KI-Fehler</b><br>Diese Storys kannst du nach Einrichtung der KI erneut erzeugen.</div>`:''}
+  ${planned?`<div class="card"><b>Schnellfreigabe</b><div class="desc">Titel + Kurzinhalt prüfen. Nur bei Unsicherheit öffnest du die Details.</div><button class="btn ok" id="approveAll">Alle ${planned} offenen Ideen freigeben</button></div>`:''}
+  ${!planned&&rd<15?`<div class="card"><b>Story-Ideen sind freigegeben ✓</b><div class="desc">Jetzt können die fehlenden Geschichten erzeugt werden. Ziel je Story: 750–850 Wörter.</div><button class="btn" id="generateAll">Alle ${15-rd} fehlenden Geschichten erzeugen</button><div class="inline-note">Die automatische Qualitätsprüfung bauen wir später noch strenger aus. Aktuell werden echte Generatorfehler und Wortlänge sichtbar gemacht.</div></div>`:''}
+  <div class="section-title">15 Geschichten</div><div id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div><div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut erzeugen</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details</button></div></div>`}).join('')}</div>`;
   if($('#approveAll'))$('#approveAll').onclick=approveAllPlanned;
+  if($('#generateAll'))$('#generateAll').onclick=generateAllStories;
   document.querySelectorAll('[data-oneapprove]').forEach(b=>b.onclick=()=>approveOneQuick(Number(b.dataset.oneapprove),b));
   document.querySelectorAll('[data-openstory]').forEach(b=>b.onclick=()=>go('story',{id:b.dataset.openstory,request:S.request.id}));
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>{const st=S.stories.find(x=>x.id===b.dataset.retry);if(st)generateStory(st,b)});
 }
-async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('manage-request-story-item',{request_id:S.request.id,position,action:'approve'});await loadStories();toast('Story-Idee freigegeben.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
-async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();if(prodStage(S.request)==='preparation')await updateProductionStage(S.request.id,'ai');toast('Alle offenen Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
-
-async function storyView(){
-  shell(true);const id=query().get('id'),s=S.stories.find(x=>x.id===id);S.currentStory=s;$('#headerSub').textContent='Story '+(s?.position||'');
-  if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
-  const p=s.plan_item||{}, moments=p.illustration_moments||[];
-  main.innerHTML=`<span class="pill ${pillClass(s.status)}">${esc(statusLabel(s.status))}</span>
-  <h2>${String(s.position).padStart(2,'0')} · ${esc(s.title)}</h2>
-  <div class="card kv">
-    <b>Ort</b><span>${esc(p.primary_setting||'—')}</span>
-    <b>Hook</b><span>${esc(p.hook||'—')}</span>
-    <b>Problem</b><span>${esc(p.central_problem||'—')}</span>
-    <b>Wendepunkt</b><span>${esc(p.emotional_turn||'—')}</span>
-    <b>Lösung</b><span>${esc(p.active_resolution||'—')}</span>
-    <b>Persönlich</b><span>${esc((p.personal_details_used||[]).join(', ')||'—')}</span>
-  </div>
-  <div class="section-title">Geplante Illustrationen</div>
-  ${moments.map((m,i)=>`<div class="card"><b>Bild ${i+1}</b><div class="desc">${esc(m.action||m.scene||'')}</div></div>`).join('')}
-  <div id="storyActions"></div>
-  <div id="storyOutput"></div>`;
-  if(!S.readiness)await loadReadiness();
-  renderStoryActions(s);
-  if(s.status==='ready'&&s.story_project_id)await loadStoryOutput(s);
-}
+async function approveOneQuick(position,b){try{busy(b,true,'…');await invoke('manage-request-story-item',{request_id:S.request.id,position,action:'approve'});await loadStories();if(!S.stories.some(x=>x.status==='planned'))await updateProductionStage(S.request.id,'story_generation');toast('Story-Idee freigegeben.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function approveAllPlanned(){const b=$('#approveAll'),items=S.stories.filter(x=>x.status==='planned');try{busy(b,true,`0/${items.length} …`);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} freigeben …`;await invoke('manage-request-story-item',{request_id:S.request.id,position:items[i].position,action:'approve'})}await loadStories();await updateProductionStage(S.request.id,'story_generation');toast('Alle Story-Ideen sind freigegeben.','ok');productionView()}catch(e){toast('Freigabe gestoppt: '+e.message,'err');await loadStories();productionView()}finally{busy(b,false)}}
+async function generateAllStories(){const b=$('#generateAll');if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}const items=S.stories.filter(x=>x.status==='approved'||(x.status==='failed'&&x.approved_at));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length}: Geschichte erzeugen …`;try{await invoke('generate-request-story-item',{request_id:S.request.id,position:items[i].position,request_key:'web-'+crypto.randomUUID()})}catch(e){errors++}}await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');toast(errors?`${items.length-errors} fertig, ${errors} mit Fehler.`:'Alle Geschichten sind fertig.','ok');productionView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 function renderStoryActions(s){
   let h='',aiReady=!!S.readiness?.openai_api_key_configured&&!!S.readiness?.openai_zdr_confirmed;
   if(s.status==='planned'){
@@ -388,7 +373,7 @@ function replaceStorySheet(s){
   modal.classList.add('open');
   $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('replace-request-story-item',{request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
-async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
+async function generateStory(s,btn=null){if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}try{busy(btn,true,'Geschichte wird erzeugt …');await invoke('generate-request-story-item',{request_id:S.request.id,position:s.position,request_key:'web-'+crypto.randomUUID()});await loadStories();if(S.stories.every(x=>x.status==='ready'))await updateProductionStage(S.request.id,'characters');const ns=S.stories.find(x=>x.id===s.id);toast('Geschichte erzeugt.','ok');S.currentStory=ns;await storyView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadStories();await storyView()}finally{busy(btn,false)}
 }
 async function loadStoryOutput(s){
   const pages=await rest('story_pages?select=page_number,text_content,illustration_prompt&project_id=eq.'+encodeURIComponent(s.story_project_id)+'&order=page_number.asc');
@@ -399,14 +384,20 @@ async function loadStoryOutput(s){
 }
 
 async function charactersView(){
-  shell(true);activeNav('dashboard');$('#headerSub').textContent='Character Bible';
-  if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Character Bible</h2><div class="small">${esc(S.request.child_first_name)} · über alle 15 Storys</div></div><span class="pill">${S.characters.length} Figuren</span></div>
-  <div id="characterList"></div>
-  ${S.characters.length?'':'<button class="btn" id="materializeChars">Character Bible erstellen</button>'}`;
-  if(!S.characters.length){$('#materializeChars').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-character-bible',{request_id:S.request.id});await loadCharacters();toast('Character Bible erstellt.','ok');await charactersView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}}
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Figuren';if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
+  const drafts=S.characters.filter(x=>x.status==='draft').length,review=S.characters.filter(x=>x.status==='reference_ready').length,approved=S.characters.filter(x=>x.status==='approved').length;
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">Figuren</h2><div class="small">Eine feste Referenz pro wiederkehrender Figur.</div></div><span class="pill">${S.characters.length}</span></div>
+  ${!S.characters.length?'<div class="card"><b>Character Bible erstellen</b><div class="desc">Die Figuren werden aus den Kundendaten und dem Story Contract abgeleitet.</div><button class="btn" id="materializeChars">Figuren anlegen</button></div>':''}
+  ${drafts?`<div class="card"><b>${drafts} Referenzbild${drafts===1?'':'er'} fehlen</b><div class="desc">Du kannst alle fehlenden Referenzen nacheinander erzeugen.</div><button class="btn" id="generateAllChars">Alle fehlenden Referenzen erzeugen</button></div>`:''}
+  ${review?`<div class="card"><b>${review} Referenz${review===1?'':'en'} wartet auf Freigabe</b><button class="btn ok" id="approveAllChars">Alle fertigen Referenzen freigeben</button></div>`:''}
+  ${S.characters.length&&approved===S.characters.length?'<div class="okbox"><b>Figuren fertig ✓</b><br>Alle Referenzen sind freigegeben. Weiter geht es mit den Illustrationen.</div>':''}<div id="characterList"></div>`;
+  if($('#materializeChars'))$('#materializeChars').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-character-bible',{request_id:S.request.id});await loadCharacters();toast('Figuren angelegt.','ok');await charactersView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}};
+  if($('#generateAllChars'))$('#generateAllChars').onclick=generateAllCharacters;
+  if($('#approveAllChars'))$('#approveAllChars').onclick=approveAllCharacters;
   await renderCharacters();
 }
+async function generateAllCharacters(){const b=$('#generateAllChars');if(!S.readiness)await loadReadiness();if(!S.readiness?.openai_api_key_configured||!S.readiness?.openai_zdr_confirmed){toast('KI noch nicht bereit: OpenAI API-Key/ZDR fehlt.','err');return}const items=S.characters.filter(x=>x.status==='draft');let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} Referenz …`;try{await invoke('generate-character-reference',{character_id:items[i].id,regenerate:false})}catch(e){errors++}}await loadCharacters();toast(errors?`${errors} Referenzen mit Fehler.`:'Referenzen erzeugt.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function approveAllCharacters(){const b=$('#approveAllChars'),items=S.characters.filter(x=>x.status==='reference_ready');try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`${i+1}/${items.length} freigeben …`;await invoke('manage-character-bible',{character_id:items[i].id,action:'approve'})}await loadCharacters();if(S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast('Alle Figuren freigegeben.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function renderCharacters(){
   const box=$('#characterList');if(!box)return;
   if(!S.characters.length){box.innerHTML='<div class="empty">Noch keine Character Bible.</div>';return}
@@ -433,14 +424,30 @@ async function generateCharacter(id,regenerate,b){
   try{busy(b,true,'Bild wird erzeugt …');await invoke('generate-character-reference',{character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function manageCharacter(id,action,b){
-  try{busy(b,true);await invoke('manage-character-bible',{character_id:id,action});await loadCharacters();toast(action==='approve'?'Referenz freigegeben.':'Referenz wieder geöffnet.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
+  try{busy(b,true);await invoke('manage-character-bible',{character_id:id,action});await loadCharacters();if(action==='approve'&&S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast(action==='approve'?'Referenz freigegeben.':'Referenz wieder geöffnet.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
+}
+
+async function illustrationsView(){
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Illustrationen';if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}await loadRequestScenes();
+  const readyStories=S.stories.filter(x=>x.status==='ready'),groups={};for(const sc of S.requestScenes)(groups[sc.request_story_id]??=[]).push(sc);const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,allPrepared=readyStories.length===15&&prepared===15,allSelected=allPrepared&&S.requestScenes.length>0&&selected===S.requestScenes.length;
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">Illustrationen</h2><div class="small">Nach Story gruppiert – niemals mit anderen Kunden vermischt.</div></div><span class="pill">${selected}/${S.requestScenes.length||'–'}</span></div><div class="summary-grid"><div class="summary-tile"><strong>${prepared}/15</strong><span>Storys vorbereitet</span></div><div class="summary-tile"><strong>${selected}/${S.requestScenes.length||0}</strong><span>Bilder ausgewählt</span></div></div>
+  ${prepared<readyStories.length?`<div class="card" style="margin-top:9px"><b>Bildszenen vorbereiten</b><div class="desc">Für jede fertige Geschichte werden 2–3 konkrete Bildmomente angelegt.</div><button class="btn" id="prepareAllScenes">Alle fehlenden Storys vorbereiten</button></div>`:''}
+  ${allSelected?`<div class="okbox" style="margin-top:9px"><b>Alle Illustrationen ausgewählt ✓</b><br>Der Auftrag kann in die Buchprüfung.</div><button class="btn" id="toBook">Weiter zur Buchprüfung</button>`:''}
+  <div class="section-title">15 Storys</div>${S.stories.map(st=>{const g=groups[st.id]||[],sel=g.filter(x=>x.status==='selected'||x.selected_variant_id).length;return `<div class="sectionlink ${st.status!=='ready'?'locked':''}"><div><b>${String(st.position).padStart(2,'0')} · ${esc(st.title)}</b><br><span>${st.status!=='ready'?'Geschichte noch nicht fertig':g.length?`${sel}/${g.length} Bilder ausgewählt`:'Bildszenen noch nicht vorbereitet'}</span></div>${st.status==='ready'?`<button class="mini-btn" data-storyimages="${st.id}">${g.length?'Bilder':'Vorbereiten'} ›</button>`:'<span>–</span>'}</div>`}).join('')}`;
+  if($('#prepareAllScenes'))$('#prepareAllScenes').onclick=prepareAllScenes;if($('#toBook'))$('#toBook').onclick=async()=>{await updateProductionStage(S.request.id,'book_review');go('book',{id:S.request.id})};document.querySelectorAll('[data-storyimages]').forEach(b=>b.onclick=async()=>{const st=S.stories.find(x=>x.id===b.dataset.storyimages),g=groups[st.id]||[];if(!g.length){try{busy(b,true);await invoke('materialize-story-scenes',{request_story_id:st.id});await loadRequestScenes();toast('Bildszenen vorbereitet.','ok');await illustrationsView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}else go('scenes',{story:st.id,request:S.request.id})});
+}
+async function prepareAllScenes(){const b=$('#prepareAllScenes'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)),items=S.stories.filter(x=>x.status==='ready'&&!prepared.has(x.id));let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} vorbereiten …`;try{await invoke('materialize-story-scenes',{request_story_id:items[i].id})}catch(e){errors++}}await loadRequestScenes();toast(errors?`${errors} Storys konnten nicht vorbereitet werden.`:'Alle Bildszenen vorbereitet.','ok');await illustrationsView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function bookView(){
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;await loadRequestScenes();const storyReady=S.stories.filter(x=>x.status==='ready').length,charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved'),prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size,selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length,pdf=!!S.request.book_pdf_storage_path,all=storyReady===15&&charOk&&imagesOk;
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><h2>Fertiges Buch</h2><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Druck-PDF erstellt',pdf)}</div><div class="book-preview"><div class="big">📖</div><b>${pdf?'Buchdatei ist vorhanden':'Buchlayout noch nicht erstellt'}</b><span>${pdf?'Die Druck-PDF kann jetzt final geprüft werden.':'Hier kommt später die echte blätterbare Buchvorschau mit Cover, Innenseiten und Rückseite.'}</span></div>${all&&!pdf?'<div class="rule warn"><b>Inhalte sind bereit.</b><br>Als nächster technischer Block fehlt noch die automatische Layout-/PDF-Erstellung. Deshalb kann der Auftrag noch nicht versehentlich zum Druck freigegeben werden.</div>':''}${pdf?'<button class="btn ok" id="approveBook">Buch freigeben → Druckbereit</button>':'<button class="btn" disabled>Druckfreigabe gesperrt – PDF fehlt</button>'}`;
+  if($('#approveBook'))$('#approveBook').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(S.request.id,'print_ready');toast('Buch ist druckbereit.','ok');go('print')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 
 async function scenesView(){
   shell(true);activeNav('dashboard');const storyId=query().get('story'),s=S.stories.find(x=>x.id===storyId);$('#headerSub').textContent='Illustrationen';
   if(!s){main.innerHTML='<div class="empty">Story nicht gefunden.</div>';return}
   let scenes=await loadScenes(storyId);
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Bildproduktion</h2><div class="small">Story ${s.position} · ${esc(s.title)}</div></div><span class="pill">${scenes.length} Szenen</span></div>
+  main.innerHTML=`<button class="backline" onclick="go('illustrations',{id:'${esc(S.request.id)}'})">‹ Illustrationen</button><div class="row"><div><h2 style="margin-bottom:2px">Bildproduktion</h2><div class="small">Story ${s.position} · ${esc(s.title)}</div></div><span class="pill">${scenes.length} Szenen</span></div>
   <div id="scenesList"></div>
   ${scenes.length?'':'<button class="btn" id="materializeScenes">2–3 Bildszenen vorbereiten</button>'}`;
   if(!scenes.length){$('#materializeScenes').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-story-scenes',{request_story_id:s.id});toast('Bildszenen vorbereitet.','ok');await scenesView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}};return}
@@ -473,14 +480,13 @@ async function selectVariant(id,b){
 }
 
 function printView(){
-  shell(true);activeNav('print');$('#headerSub').textContent='Druck';
-  const items=S.requests.filter(r=>['print_ready','printing','printed'].includes(prodStage(r)));
-  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck</h2><div class="small">Hier sind nur Bücher, die wirklich beim Druckprozess sind.</div></div><span class="pill">${items.length}</span></div>
-  ${items.length?items.map(r=>{const s=prodStage(r);return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.customer_name)}</div><div class="contact">${contactHtml(r)}</div></div><span class="pill ${stageClass(s)}">${stageLabel(s)}</span></div>
-  ${s==='print_ready'?`<button class="btn" data-stage="printing" data-rid="${r.id}">Als „Im Druck“ markieren</button>`:s==='printing'?`<button class="btn ok" data-stage="printed" data-rid="${r.id}">✓ Gedruckt – Auftrag abschließen</button>`:''}<button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></div>`}).join(''):'<div class="empty">Noch kein Buch ist im Druckbereich.</div>'}`;
-  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.rid,b.dataset.stage);toast('Druckstatus aktualisiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});
-  document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>go('request',{id:b.dataset.openreq}));
+  shell(true);activeNav('print');$('#headerSub').textContent='Druck';const items=S.requests.filter(r=>['print_ready','printing','printed','shipped'].includes(prodStage(r)));
+  main.innerHTML=`<div class="row"><div><h2 style="margin-bottom:2px">Druck & Versand</h2><div class="small">Nur fertige Buchdateien erscheinen hier.</div></div><span class="pill">${items.length}</span></div>${items.length?items.map(r=>{const st=prodStage(r);let action='';if(st==='print_ready')action=`<button class="btn" data-order="${r.id}">Druck bestellt</button>`;if(st==='printing')action=`<button class="btn ok" data-printed="${r.id}">✓ Buch ist gedruckt</button>`;if(st==='printed')action=`<button class="btn" data-ship="${r.id}">Als versendet markieren</button>`;if(st==='shipped')action=`<button class="btn ok" data-complete="${r.id}">✓ Auftrag abschließen</button>`;return `<div class="print-card"><div class="row"><div><div class="story-title">${esc(r.child_first_name)} · ${esc(r.customer_name)}</div><div class="contact">${contactHtml(r)}</div></div><span class="pill ${stageClass(st)}">${stageLabel(st)}</span></div><div class="kv" style="margin-top:10px"><b>Druckerei</b><span>${esc(r.print_provider||'—')}</span><b>Bestellnr.</b><span>${esc(r.print_order_number||'—')}</span>${r.shipping_tracking?`<b>Tracking</b><span>${esc(r.shipping_tracking)}</span>`:''}</div>${action}<button class="btn secondary" data-openreq="${r.id}">Auftrag öffnen</button></div>`}).join(''):'<div class="empty">Noch kein Buch ist druckbereit. Ein Auftrag erscheint hier erst nach der finalen Buch-/PDF-Freigabe.</div>'}`;
+  document.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>printOrderSheet(b.dataset.order));document.querySelectorAll('[data-printed]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.printed,'printed');toast('Als gedruckt markiert.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});document.querySelectorAll('[data-ship]').forEach(b=>b.onclick=()=>shippingSheet(b.dataset.ship));document.querySelectorAll('[data-complete]').forEach(b=>b.onclick=async()=>{try{busy(b,true);await updateProductionStage(b.dataset.complete,'completed');toast('Auftrag abgeschlossen.','ok');printView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}});document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>go('request',{id:b.dataset.openreq}));
 }
+function printOrderSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML=`<div class="row"><h2>Druck bestellt</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div><label>Druckerei</label><input id="printProvider" value="${esc(r?.print_provider||'')}" placeholder="z. B. Online-Druckerei"><label>Bestellnummer</label><input id="printOrder" value="${esc(r?.print_order_number||'')}" placeholder="optional"><button class="btn" id="savePrint">Speichern → Im Druck</button>`;modal.classList.add('open');$('#savePrint').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(id,'printing',{print_provider:$('#printProvider').value.trim()||null,print_order_number:$('#printOrder').value.trim()||null});closeModal();toast('Auftrag ist jetzt im Druck.','ok');printView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}}
+function shippingSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML=`<div class="row"><h2>Versand</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div><label>Trackingnummer</label><input id="tracking" value="${esc(r?.shipping_tracking||'')}" placeholder="optional"><button class="btn" id="saveShip">Als versendet markieren</button>`;modal.classList.add('open');$('#saveShip').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(id,'shipped',{shipping_tracking:$('#tracking').value.trim()||null});closeModal();toast('Versand gespeichert.','ok');printView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}}
+
 async function settingsView(){
   shell(true);activeNav('settings');$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
   const x=S.readiness||{}, f=x.test_fixture||{};
@@ -505,6 +511,8 @@ async function render(){
     if(r==='print')return printView();
     if(r==='settings')return settingsView();
     if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return requestView()}
+    if(r==='illustrations'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return illustrationsView()}
+    if(r==='book'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return bookView()}
     if(!S.request&&S.requests.length)await loadRequest(S.requests[0].id);
     if(r==='production'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return productionView()}
     if(r==='story'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return storyView()}

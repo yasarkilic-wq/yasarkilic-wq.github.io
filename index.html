@@ -604,11 +604,12 @@ async function loadStoryOutput(s){
 
 async function charactersView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Figuren';if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  const drafts=S.characters.filter(x=>x.status==='draft').length,review=S.characters.filter(x=>x.status==='reference_ready').length,approved=S.characters.filter(x=>x.status==='approved').length;
+  const drafts=S.characters.filter(x=>x.status==='draft').length,review=S.characters.filter(x=>x.status==='reference_ready').length,approved=S.characters.filter(x=>x.status==='approved').length,autoRunning=S.request?.status==='generating'&&prodStage(S.request)==='characters';
   main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><div><h2 style="margin-bottom:2px">Figuren</h2><div class="small">Eine feste Referenz pro wiederkehrender Figur.</div></div><span class="pill">${S.characters.length}</span></div>
-  ${!S.characters.length?'<div class="card"><b>Character Bible erstellen</b><div class="desc">Die Figuren werden aus den Kundendaten und dem Story Contract abgeleitet.</div><button class="btn" id="materializeChars">Figuren anlegen</button></div>':''}
-  ${drafts?`<div class="card"><b>${drafts} Referenzbild${drafts===1?'':'er'} fehlen</b><div class="desc">Du kannst alle fehlenden Referenzen nacheinander erzeugen.</div><button class="btn" id="generateAllChars">Alle fehlenden Referenzen erzeugen</button></div>`:''}
-  ${review?`<div class="card"><b>${review} Referenz${review===1?'':'en'} wartet auf Freigabe</b><button class="btn ok" id="approveAllChars">Alle fertigen Referenzen freigeben</button></div>`:''}
+  ${autoRunning?`<div class="card"><b>🔄 Figuren-Automatik läuft</b><div class="desc">Referenzen werden serverseitig erzeugt und nach erfolgreicher Prüfung automatisch freigegeben. Keine Aktion nötig.</div></div>`:''}
+  ${!autoRunning&&!S.characters.length?'<div class="card"><b>Character Bible erstellen</b><div class="desc">Manuelle Korrekturfunktion: Figuren neu anlegen.</div><button class="btn" id="materializeChars">Figuren anlegen</button></div>':''}
+  ${!autoRunning&&drafts?`<div class="card"><b>${drafts} Referenzbild${drafts===1?'':'er'} fehlen</b><div class="desc">Nur für manuelle Korrekturen.</div><button class="btn" id="generateAllChars">Fehlende Referenzen erzeugen</button></div>`:''}
+  ${!autoRunning&&review?`<div class="card"><b>${review} Referenz${review===1?'':'en'} wartet auf manuelle Prüfung</b><button class="btn ok" id="approveAllChars">Fertige Referenzen freigeben</button></div>`:''}
   ${S.characters.length&&approved===S.characters.length?'<div class="okbox"><b>Figuren fertig ✓</b><br>Alle Referenzen sind freigegeben. Weiter geht es mit den Illustrationen.</div>':''}<div id="characterList"></div>`;
   if($('#materializeChars'))$('#materializeChars').onclick=async e=>{const b=e.currentTarget;try{busy(b,true);await invoke('materialize-character-bible',{request_id:S.request.id});await loadCharacters();toast('Figuren angelegt.','ok');await charactersView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}};
   if($('#generateAllChars'))$('#generateAllChars').onclick=generateAllCharacters;

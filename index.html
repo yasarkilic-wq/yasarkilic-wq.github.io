@@ -362,11 +362,15 @@ function requestView(){
   const batchPos=Number(batchJob?.current_position||0);
   let taskTitle=nextAction(r),taskText='',taskButton='';
   if(stage==='new'){
-    taskTitle='Auftrag vorbereiten';
-    taskText=hasContract?'Kundendaten sind geprüft. Als Nächstes werden die 15 Story-Ideen erstellt.':'Kundendaten sind angekommen. Story Contract und 15 Story-Ideen werden als nächster Produktionsschritt vorbereitet.';
-    taskButton=`<button class="btn" id="prepareOrder">${hasContract?'15 Story-Ideen erstellen':'Auftrag vorbereiten'}</button>`;
+    taskTitle='Buchproduktion starten';
+    taskText='Ein Klick startet serverseitig Story Contract → 15 Ideen → 15 Geschichten → Figuren → Bilder → Review-PDF. Danach ist erst deine Endkontrolle nötig.';
+    taskButton='<button class="btn" id="prepareOrder">Buchproduktion starten</button>';
   }else if(stage==='story_plan'){
-    taskTitle='Story-Ideen freigeben';taskText=`${approved}/15 sind freigegeben. Du musst nur Titel und Kurzinhalt prüfen.`;taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">Story-Ideen prüfen</button>`;
+    if(r.status==='generating'){
+      taskTitle='Story-Ideen werden erstellt';taskText='Die Vollautomatik arbeitet serverseitig weiter. Keine Freigabe nötig.';taskButton='';
+    }else{
+      taskTitle='Story-Ideen prüfen';taskText=`${approved}/15 sind vorbereitet. Nur öffnen, wenn du gezielt etwas korrigieren möchtest.`;taskButton=`<button class="btn secondary" onclick="go('production',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;
+    }
   }else if(stage==='story_generation'){
     if(batchRunning){
       taskTitle='Geschichten werden erstellt';
@@ -378,11 +382,19 @@ function requestView(){
       taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">${failed?'Probleme öffnen':'Geschichten erstellen'}</button>`;
     }
   }else if(stage==='characters'){
-    taskTitle='Figuren festlegen';taskText=`${charApproved}/${charTotal||'–'} Figuren sind freigegeben. Erst danach entstehen die Story-Bilder.`;taskButton=`<button class="btn" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren prüfen</button>`;
+    if(r.status==='generating'){
+      taskTitle='Figuren werden erstellt';taskText=`${charApproved}/${charTotal||'–'} Referenzen fertig. Erzeugung und Freigabe laufen automatisch.`;taskButton=`<button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Details ansehen</button>`;
+    }else{
+      taskTitle='Figuren prüfen';taskText=`${charApproved}/${charTotal||'–'} Figuren fertig. Nur bei einer gewünschten Korrektur öffnen.`;taskButton=`<button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;
+    }
   }else if(stage==='illustrations'){
-    taskTitle='Illustrationen fertigstellen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Jede Geschichte bleibt separat.`;taskButton=`<button class="btn" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder bearbeiten</button>`;
+    if(r.status==='generating'){
+      taskTitle='Illustrationen werden erstellt';taskText=`${selected}/${sceneTotal||'–'} Bildszenen automatisch erstellt und ausgewählt. Keine Aktion nötig.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Fortschritt ansehen</button>`;
+    }else{
+      taskTitle='Illustrationen prüfen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Nur fehlerhafte oder gewünschte Szenen einzeln korrigieren.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;
+    }
   }else if(stage==='book_review'){
-    taskTitle='Buch kontrollieren';taskText=r.review_pdf_storage_path?'Die Review-PDF ist fertig. Prüfe jetzt alle Geschichten und Bilder.':'Texte und Bilder sind fertig. Jetzt wird die Review-PDF zur Endkontrolle erstellt.';taskButton=`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Buch öffnen</button>`;
+    taskTitle=r.review_pdf_storage_path?'Buch kontrollieren':'Review-PDF wird erstellt';taskText=r.review_pdf_storage_path?'Die Review-PDF ist fertig. Prüfe jetzt vollständige Geschichten und ausgewählte Bilder.':'Alle Inhalte sind fertig. Die Review-PDF wird serverseitig aufgebaut; keine Aktion nötig.';taskButton=r.review_pdf_storage_path?`<button class="btn" onclick="go('book',{id:'${esc(r.id)}'})">Review-PDF prüfen</button>`:`<button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Fortschritt ansehen</button>`;
   }else if(['print_ready','printing','printed','shipped'].includes(stage)){
     taskTitle=nextAction(r);taskText='Die Buchproduktion ist abgeschlossen. Dieser Auftrag liegt jetzt im Druck-/Versandbereich.';taskButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
   }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}

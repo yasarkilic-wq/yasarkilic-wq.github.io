@@ -451,7 +451,7 @@ window.showContract=function(){
 function productionView(){
   shell(true);activeNav('dashboard');if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
   const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
-  const batchJob=S.storyBatch?.job||null,batchRunning=batchJob?.status==='running',batchPaused=batchJob?.status==='paused_quota',batchDoneErrors=batchJob?.status==='completed_with_errors';
+  const batchJob=S.storyBatch?.job||null,batchRunning=batchJob?.status==='running'||(S.request?.status==='generating'&&prodStage(S.request)==='story_generation'),batchPaused=batchJob?.status==='paused_quota',batchDoneErrors=batchJob?.status==='completed_with_errors';
   const batchPos=Number(batchJob?.current_position||0),batchErr=batchJob?.last_error||{};
   const stage=prodStage(S.request),ideaMode=stage==='story_plan'||planned>0;$('#headerSub').textContent=ideaMode?'Story-Ideen':'Geschichten';
   const problemItems=S.stories.filter(x=>x.status==='failed'||x.status==='needs_review');
@@ -672,6 +672,10 @@ async function illustrationsView(){
     return (variantCounts[sc.id]||0)>=3;
   }).length;
 
+  let autoStatus=null;
+  try{autoStatus=await invoke('story4kids-production-runner',{action:'status',request_id:S.request.id})}catch{}
+  const autoJob=autoStatus?.job||null;
+  const autoRunningImages=autoJob?.status==='running'&&['scenes','images','review_pdf'].includes(autoJob?.stage);
   let batchStatus=null;
   try{batchStatus=await invoke('story4kids-image-batch',{action:'status',request_id:S.request.id})}catch{}
   const batchJob=batchStatus?.job||null;
@@ -702,7 +706,11 @@ async function illustrationsView(){
   }).join('');
 
   let automationCard='';
-  if(allPrepared && (bulkItems.length || batchRunning || batchFailed)){
+  if(autoRunningImages){
+    const aSel=Number(autoStatus?.stats?.scenes_selected)||0,aTotal=Number(autoStatus?.stats?.scenes_total)||0;
+    const aLabel=autoJob.stage==='scenes'?'Szenen werden vorbereitet':autoJob.stage==='review_pdf'?'Review-PDF wird erstellt':'Finale Bilder werden erstellt';
+    automationCard=`<div class="card" style="margin-top:9px"><b>🔄 ${aLabel}</b><div class="desc">Serverseitige Vollautomatik läuft. Pro Szene wird genau ein finales Bild erzeugt und automatisch ausgewählt. Du kannst die Seite schließen.</div><div class="rule ok"><b>${aSel}/${aTotal||'–'} Bilder ausgewählt</b></div></div>`;
+  }else if(allPrepared && (bulkItems.length || batchRunning || batchFailed)){
     if(batchRunning){
       automationCard=`<div class="card" style="margin-top:9px">
         <b>🔄 Server-Automatik läuft</b>

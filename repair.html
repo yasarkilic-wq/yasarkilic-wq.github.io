@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173957">
+<meta name="robots" content="noindex,nofollow">
+<title>Story4Kids Admin – Reparatur</title>
+<style>
+html,body{margin:0;height:100%;background:#173957;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+iframe{display:block;border:0;width:100%;height:100%;background:#fff9ef}
+.boot{position:fixed;inset:0;display:grid;place-items:center;background:#173957;color:white;z-index:5;text-align:center;padding:24px}
+.boot b{display:block;font-size:18px}.boot span{font-size:12px;opacity:.75}.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="boot" id="boot"><div><b>Story4Kids wird repariert geladen …</b><span>Alte Sitzung wird einmal entfernt.</span></div></div>
+<iframe id="app" title="Story4Kids Admin"></iframe>
+
+<script>
+const f=document.getElementById('app');
+const boot=document.getElementById('boot');
+
+// repair.html und index.html liegen auf derselben GitHub-Pages-Domain.
+// Deshalb kann die kaputte alte Sitzung vor dem Laden sicher entfernt werden.
+try{ localStorage.removeItem('s4k_session'); }catch(e){}
+
+const patch = String.raw`
+(function(){
+  // Ungültige Refresh-Tokens künftig sauber auf Login zurücksetzen.
+  const originalRefresh = refreshSession;
+  refreshSession = async function(){
+    try{
+      return await originalRefresh();
+    }catch(e){
+      saveSession(null);
+      S.session=null;
+      location.hash='login';
+      throw e;
+    }
+  };
+
+  // Fehlende Detailansicht für fertige Geschichten.
+  storyView = async function(){
+    shell(true);
+    activeNav('dashboard');
+    const id=query().get('id');
+    const s=S.stories.find(x=>x.id===id);
+    $('#headerSub').textContent='Geschichte';
+
+    if(!s){
+      main.innerHTML='<div class="empty">Geschichte nicht gefunden.</div>';
+      return;
+    }
+
+    S.currentStory=s;
+    const p=s.plan_item||{};
+    const err=s.generation_error?.message
+      || s.generation_error?.error
+      || s.generation_error?.provider?.error
+      || '';
+
+    main.innerHTML=\`
+      <button class="backline" onclick="go('production',{id:'\${esc(S.request.id)}'})">‹ Geschichten</button>
+      <div class="row">
+        <div>
+          <h2 style="margin-bottom:2px">\${String(s.position).padStart(2,'0')} · \${esc(s.title)}</h2>
+          <div class="small">\${esc(S.request.child_first_name)} · nur dieser Auftrag</div>
+        </div>
+        <span class="pill \${pillClass(s.status)}">\${esc(statusLabel(s.status))}</span>
+      </div>
+      <div class="card">
+        <div class="kv">
+          <b>Kurzidee</b><span>\${esc(s.premise||p.premise||'—')}</span>
+          <b>Ort</b><span>\${esc(p.primary_setting||'—')}</span>
+          <b>Problem</b><span>\${esc(p.central_problem||'—')}</span>
+          <b>Lösung</b><span>\${esc(p.active_resolution||'—')}</span>
+        </div>
+      </div>
+      \${err ? \`<div class="rule red"><b>Letzter Fehler</b><br>\${esc(err)}</div>\` : ''}
+      <div id="storyActions"></div>
+      <div id="storyOutput">\${s.status==='ready' ? '<div class="empty">Geschichte wird geladen …</div>' : ''}</div>
+    \`;
+
+    renderStoryActions(s);
+
+    if(s.status==='ready' && s.story_project_id){
+      try{
+        await loadStoryOutput(s);
+      }catch(e){
+        $('#storyOutput').innerHTML=
+          \`<div class="rule red"><b>Text konnte nicht geladen werden.</b><br>\${esc(e.message)}</div>\`;
+      }
+    }
+  };
+
+  // Einzelne Story nur noch über den geschützten Generator.
+  generateStory = async function(s,btn=null){
+    if(!S.readiness) await loadReadiness();
+
+    if(!S.readiness?.ai_production_ready){
+      toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');
+      return;
+    }
+
+    if(S.stories.some(x=>x.status==='generating' && x.id!==s.id)){
+      toast('Es läuft bereits eine andere Geschichte. Bitte warten.','err');
+      return;
+    }
+
+    try{
+      busy(btn,true,'Geschichte wird erzeugt …');
+
+      await invoke('story4kids-story-safe',{
+        request_id:S.request.id,
+        position:s.position,
+        request_key:'safe-web-'+crypto.randomUUID()
+      });
+
+      await loadStories();
+
+      if(S.stories.every(x=>x.status==='ready')){
+        await updateProductionStage(S.request.id,'characters');
+      }
+
+      S.currentStory=S.stories.find(x=>x.id===s.id);
+      toast('Geschichte ist fertig.','ok');
+      await storyView();
+
+    }catch(e){
+      const locked=e.status===409 &&
+        (e.data?.error==='story_generation_already_running' ||
+         e.data?.error==='story_slot_already_claimed');
+
+      if(locked){
+        toast('Es läuft bereits eine andere Geschichte. Bitte warten.','err');
+      }else{
+        toast(e.message,'err');
+      }
+
+      await loadStories();
+      await storyView();
+    }finally{
+      busy(btn,false);
+    }
+  };
+
+  // Stapel ebenfalls strikt nacheinander über story4kids-story-safe.
+  generateAllStories = async function(){
+    const b=$('#generateAll');
+
+    if(!S.readiness) await loadReadiness();
+
+    if(!S.readiness?.ai_production_ready){
+      toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');
+      return;
+    }
+
+    if(S.stories.some(x=>x.status==='generating')){
+      toast('Es läuft bereits eine Geschichte. Bitte zuerst warten oder aktualisieren.','err');
+      return;
+    }
+
+    const items=S.stories.filter(
+      x=>x.status==='approved' || (x.status==='failed' && x.approved_at)
+    );
+
+    let errors=0, done=0;
+
+    try{
+      busy(b,true);
+
+      for(let i=0;i<items.length;i++){
+        b.innerHTML='<span class="spinner"></span>'+(i+1)+'/'+items.length+': Geschichte erzeugen …';
+
+        try{
+          await invoke('story4kids-story-safe',{
+            request_id:S.request.id,
+            position:items[i].position,
+            request_key:'safe-batch-'+crypto.randomUUID()
+          });
+          done++;
+        }catch(e){
+          if(e.status===409){
+            toast('Eine andere Generierung läuft. Stapel wurde gestoppt.','err');
+            break;
+          }
+          errors++;
+        }
+
+        await loadStories();
+      }
+
+      await loadStories();
+
+      if(S.stories.every(x=>x.status==='ready')){
+        await updateProductionStage(S.request.id,'characters');
+      }
+
+      toast(
+        errors ? done+' fertig, '+errors+' mit Fehler.' : done+' Geschichten fertig.',
+        'ok'
+      );
+
+      productionView();
+
+    }catch(e){
+      toast(e.message,'err');
+      await loadStories();
+      productionView();
+    }finally{
+      busy(b,false);
+    }
+  };
+
+  console.info('Story4Kids repair active');
+})();
+`;
+
+f.addEventListener('load',()=>{
+  try{
+    const d=f.contentDocument;
+    const s=d.createElement('script');
+    s.textContent=patch;
+    d.head.appendChild(s);
+    boot.classList.add('hidden');
+  }catch(e){
+    boot.innerHTML='<div><b>Reparatur konnte nicht geladen werden.</b><span>'+String(e.message||e)+'</span></div>';
+  }
+});
+
+// index.html bleibt unverändert; Safari rendert sie normal über GitHub Pages.
+f.src='index.html?v=repair-20260814-1447#login';
+</script>
+</body>
+</html>

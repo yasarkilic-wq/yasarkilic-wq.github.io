@@ -967,7 +967,8 @@ async function bookView(){
   const qualityBlockers=S.qualityChecks.filter(x=>x.status==='failed'&&x.blocking);
   const qHas=(stage,key,status='passed')=>S.qualityChecks.some(x=>x.stage===stage&&x.check_key===key&&x.status===status);
   const wordChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='word_count'&&x.status==='passed').length;
-  const semanticChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='semantic_story_quality'&&['passed','warning','skipped'].includes(x.status)).length;
+  const testQualityMode=S.request.metadata?.pipeline_mode==='test';
+  const semanticChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='semantic_story_quality'&&(testQualityMode?['passed','skipped'].includes(x.status):x.status==='passed')).length;
   const qualityReadyForApproval=!qualityRequired||(qualityBlockers.length===0&&qHas('input','required_form_data')&&qHas('story_plan','exact_15_ideas')&&qHas('stories','exact_15_ready')&&qHas('characters','protagonist_reference')&&qHas('illustrations','all_scenes_selected')&&qHas('review_pdf','review_pdf_exists')&&wordChecks===15&&semanticChecks===15);
   let reviewBlock='';
   if(reviewReady){

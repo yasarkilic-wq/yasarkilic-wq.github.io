@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.4-2026-08-15-test-mode';
+const APP_VERSION='workflow-v5.5-2026-08-15-test-mode-switch';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -422,7 +422,7 @@ function requestView(){
   const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
   main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button>
   <div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><div class="wrap">${testMode?'<span class="pill warn">TESTMODUS · SPAR</span>':''}<span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div></div>
-  <div class="contact">${contactHtml(r)}</div>${compactFlow(stage)}
+  <div class="contact">${contactHtml(r)}</div>${meta.synthetic_test===true?`<div class="rule ${testMode?'warn':'ok'}"><b>🧪 Testkunde · ${testMode?'Sparmodus':'Vollmodus'}</b><br>${testMode?'Dummy-Texte/Bilder dürfen verwendet werden. Der Produktions-Vollmodus bleibt unverändert erhalten.':'Dieser Test verwendet wieder die echte Produktions-KI und kann OpenAI-Kosten verursachen.'}<button class="btn ${testMode?'secondary':'warn'}" id="togglePipelineMode">${testMode?'Auf Vollmodus umstellen':'Sparmodus aktivieren'}</button></div>`:''}${compactFlow(stage)}
   <div class="bigstep"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
   ${failed?`<div class="issuebox"><b>${failed} Problem${failed===1?'':'e'} erkannt</b><br>Nur diese Ausnahmen brauchen deine Aufmerksamkeit.</div>`:''}
   <div class="simple-status"><div><b>${storySummary}</b><span>Geschichten</span></div><div><b>${charSummary}</b><span>Figuren</span></div><div><b>${imageSummary}</b><span>Illustrationen</span></div><div><b>${r.review_pdf_storage_path?'Review fertig':'noch offen'}</b><span>Buch</span></div></div>
@@ -432,6 +432,7 @@ function requestView(){
   <details class="overview-card"><summary><div class="row"><div><b>Figuren & Bilder</b><div class="desc">${esc(charSummary)} · ${esc(imageSummary)}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><div class="actions"><button class="btn secondary" onclick="go('characters',{id:'${esc(r.id)}'})">Figuren</button><button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Bilder</button></div></div></details>
   <details class="overview-card"><summary><div class="row"><div><b>Fertiges Buch</b><div class="desc">${r.review_pdf_storage_path?'Review-PDF vorhanden':'Noch nicht erstellt'}</div></div><span class="chev">⌄</span></div></summary><div class="inside"><button class="btn secondary" onclick="go('book',{id:'${esc(r.id)}'})">Buchbereich öffnen</button></div></details>`;
   if($('#prepareOrder'))$('#prepareOrder').onclick=e=>prepareRealOrder(e.currentTarget);
+  if($('#togglePipelineMode'))$('#togglePipelineMode').onclick=e=>setSyntheticPipelineMode(testMode?'production':'test',e.currentTarget);
   clearTimeout(window._requestLiveTimer);
   if(r.status==='generating'&&['story_plan','story_generation','characters','illustrations','book_review'].includes(prodStage(r))){
     window._requestLiveTimer=setTimeout(async()=>{
@@ -439,6 +440,19 @@ function requestView(){
       try{await loadRequest(r.id);await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);requestView()}catch(e){}
     },8000);
   }
+}
+async function setSyntheticPipelineMode(mode,btn){
+  if(!S.request?.metadata?.synthetic_test)return;
+  if(mode==='production'&&!confirm('Vollmodus für diesen Test aktivieren? Neue KI-Texte/Bilder können wieder OpenAI-Kosten verursachen. Bereits fertige Testdaten bleiben erhalten.'))return;
+  try{
+    busy(btn,true,'Modus wird geändert …');
+    const now=new Date().toISOString();
+    const metadata={...(S.request.metadata||{}),pipeline_mode:mode,pipeline_mode_updated_at:now};
+    await rest('customer_requests?id=eq.'+encodeURIComponent(S.request.id),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({metadata,updated_at:now})});
+    await loadRequest(S.request.id);
+    toast(mode==='test'?'Sparmodus aktiv. Produktionsmodus bleibt unangetastet.':'Vollmodus aktiv. Der bisherige Produktionsstand ist weiterhin vorhanden.','ok');
+    requestView();
+  }catch(e){toast(e.message,'err')}finally{if(document.body.contains(btn))busy(btn,false)}
 }
 async function prepareRealOrder(btn){
   try{

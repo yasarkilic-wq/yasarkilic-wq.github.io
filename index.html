@@ -132,7 +132,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.3-2026-08-15-quota-pause-status';
+const APP_VERSION='workflow-v5.4-2026-08-15-test-mode';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -349,7 +349,7 @@ function compactFlow(stage){
 function requestView(){
   shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
   $('#headerSub').textContent=esc(r.child_first_name)+' · Auftrag';
-  const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{};
+  const meta=r.metadata||{},child=meta.child_profile||{},app=meta.appearance||{},testMode=meta.synthetic_test===true&&meta.pipeline_mode==='test';
   const planned=S.stories.filter(x=>x.status==='planned').length;
   const approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length;
   const ready=S.stories.filter(x=>x.status==='ready').length;
@@ -421,7 +421,7 @@ function requestView(){
   const charSummary=charTotal?`${charApproved}/${charTotal} frei`:'noch offen';
   const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
   main.innerHTML=`<button class="backline" onclick="go('dashboard')">‹ Alle Aufträge</button>
-  <div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div>
+  <div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><div class="wrap">${testMode?'<span class="pill warn">TESTMODUS · SPAR</span>':''}<span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div></div>
   <div class="contact">${contactHtml(r)}</div>${compactFlow(stage)}
   <div class="bigstep"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
   ${failed?`<div class="issuebox"><b>${failed} Problem${failed===1?'':'e'} erkannt</b><br>Nur diese Ausnahmen brauchen deine Aufmerksamkeit.</div>`:''}
@@ -443,9 +443,18 @@ function requestView(){
 async function prepareRealOrder(btn){
   try{
     busy(btn,true,'Auftrag wird vorbereitet …');
+    const testMode=S.request?.metadata?.synthetic_test===true&&S.request?.metadata?.pipeline_mode==='test';
+    if(testMode){
+      const d=await invoke('story4kids-test-pipeline',{action:'start',request_id:S.request.id});
+      await loadRequest(S.request.id);
+      await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);
+      toast('Testmodus gestartet: Dummy-Texte/Bilder → Review-PDF. Keine OpenAI-Bildkosten.','ok');
+      requestView();
+      return;
+    }
     if(!S.readiness)await loadReadiness();
     if(!S.request.metadata?.consent?.ai_processing_accepted){
-      toast('Für diesen Auftrag fehlt noch die neue KI-Zustimmung im Kundenformular. Bitte den Testauftrag mit dem aktuellen Formular neu senden.','err');
+      toast('Für diesen Auftrag fehlt noch die neue KI-Zustimmung im Kundenformular. Bitte den Auftrag mit dem aktuellen Formular neu senden.','err');
       await loadRequest(S.request.id);requestView();return;
     }
     if(!S.readiness?.ai_production_ready){

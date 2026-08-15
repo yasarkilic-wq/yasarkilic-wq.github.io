@@ -108,6 +108,8 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 .issuebox{background:#fff7e8;border:1px solid #ead0a0;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.issuebox b{color:#85560d}.okbox{background:#edf8f3;border:1px solid #cce6db;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.okbox b{color:var(--ok)}
 
 @media(min-width:700px){.app{margin-top:18px;margin-bottom:18px;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden}.bottomnav{bottom:18px;border-radius:0 0 26px 26px}}
+#settingsBtn{display:none!important}
+#qualityPanel>.statusline{display:none}
 </style>
 </head>
 <body>
@@ -1108,7 +1110,7 @@ function printOrderSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHT
 function shippingSheet(id){const r=S.requests.find(x=>x.id===id);sheet.innerHTML=`<div class="row"><h2>Versand</h2><button class="iconbtn" style="color:var(--navy);border-color:#ccd;background:#fff" onclick="closeModal()">×</button></div><label>Trackingnummer</label><input id="tracking" value="${esc(r?.shipping_tracking||'')}" placeholder="optional"><button class="btn" id="saveShip">Als versendet markieren</button>`;modal.classList.add('open');$('#saveShip').onclick=async e=>{try{busy(e.currentTarget,true);await updateProductionStage(id,'shipped',{shipping_tracking:$('#tracking').value.trim()||null});closeModal();toast('Versand gespeichert.','ok');printView()}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}}}
 
 async function settingsView(){
-  shell(true);$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
+  shell(true);activeNav('settings');$('#headerSub').textContent='Einstellungen';if(!S.readiness)await loadReadiness();
   const x=S.readiness||{},aiKey=!!x.openai_api_key_configured,zdr=!!x.openai_zdr_confirmed,privacy=!!x.privacy_mode_active,aiReady=!!x.ai_production_ready;
   let budget=null,budgetError='';
   try{budget=await invoke('story4kids-ai-budget',{action:'status'})}catch(e){budgetError=e.message||'Budgetdaten konnten nicht geladen werden.'}

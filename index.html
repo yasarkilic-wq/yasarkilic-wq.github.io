@@ -386,7 +386,7 @@ function processPanel(r,stage,ready,charApproved,charTotal,selected,sceneTotal){
     ['7 · Kinderbuch-Layout','Nach deiner Freigabe automatisch 21 × 21 cm','print_pdf',!!r.book_pdf_storage_path],
     ['8 · Umschlag','Vorderseite, Rückseite und vorläufiger Rücken automatisch','cover_pdf',!!r.cover_pdf_storage_path]
   ];
-  return `<details class="overview-card" open><summary><div class="row"><div><b>So läuft dieser Auftrag</b><div class="desc">Automatik + Qualitätskontrollen zwischen den Schritten</div></div><span class="chev">⌄</span></div></summary><div class="inside">${rows.map(x=>`<div class="statusline"><div><b>${x[0]}</b><div class="desc">${x[1]}</div></div><span class="${x[3]?'yes':'no'}">${x[2]==='cover_pdf'?(x[3]?'✓ fertig':'wartet'):qi(x[2])}</span></div>`).join('')}</div></details>`;
+  return `<details class="overview-card"><summary><div class="row"><div><b>Alle Schritte & Prüfungen</b><div class="desc">Nur öffnen, wenn du Details sehen möchtest</div></div><span class="chev">⌄</span></div></summary><div class="inside">${rows.map(x=>`<div class="statusline"><div><b>${x[0]}</b><div class="desc">${x[1]}</div></div><span class="${x[3]?'yes':'no'}">${x[2]==='cover_pdf'?(x[3]?'✓ fertig':'wartet'):qi(x[2])}</span></div>`).join('')}</div></details>`;
 }
 function requestView(){
   shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}

@@ -132,13 +132,13 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.5-2026-08-15-test-mode-switch';
+const APP_VERSION='workflow-v5.6-2026-08-15-quality-flow';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
 const S={
   session:null, requests:[], request:null, stories:[], characters:[], requestScenes:[], scenes:{}, variants:{}, readiness:null,
-  imageUrls:new Map(), currentStory:null, storyBatch:null
+  imageUrls:new Map(), currentStory:null, storyBatch:null, qualityChecks:[]
 };
 
 const $=s=>document.querySelector(s);
@@ -163,7 +163,7 @@ function contactInfo(r){
 }
 function contactHtml(r){const c=contactInfo(r),a=[];if(c.instagram)a.push(`<span>◎ ${esc(c.instagram)}</span>`);if(c.phone)a.push(`<a href="tel:${esc(c.phone)}">☎ ${esc(c.phone)}</a>`);if(c.email)a.push(`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`);if(c.preferred)a.push(`<span>Bevorzugt: ${esc(c.preferred)}</span>`);return a.join('')||'<span>Kein Kontakt hinterlegt</span>'}
 function isDemo(r){return r?.metadata?.demo_workflow===true||String(r?.metadata?.demo_workflow||'')==='true'}
-function nextAction(r){const s=prodStage(r),running=r?.status==='generating',quota=r?.metadata?.quota_pause;if(quota?.active)return 'KI-Guthaben leer · automatisch pausiert';if(running&&s==='story_plan')return 'Story-Ideen werden erstellt';if(running&&s==='story_generation')return 'Geschichten werden erstellt';if(running&&s==='characters')return 'Figuren werden erstellt';if(running&&s==='illustrations')return 'Illustrationen werden erstellt';if(s==='book_review'&&!r?.review_pdf_storage_path)return 'Review-PDF wird erstellt';return ({new:'Auftrag prüfen & Buch starten',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Fertiges Buch prüfen',print_ready:'Druck bestellen',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
+function nextAction(r){const s=prodStage(r),running=r?.status==='generating',quota=r?.metadata?.quota_pause,q=r?.metadata?.quality_summary;if(Number(q?.blocking_failed||0)>0)return 'Qualitätsprüfung: Korrektur nötig';if(quota?.active)return 'KI-Guthaben leer · automatisch pausiert';if(running&&s==='story_plan')return 'Story-Ideen werden erstellt';if(running&&s==='story_generation')return 'Geschichten werden erstellt';if(running&&s==='characters')return 'Figuren werden erstellt';if(running&&s==='illustrations')return 'Illustrationen werden erstellt';if(s==='book_review'&&!r?.review_pdf_storage_path)return 'Review-PDF wird erstellt';return ({new:'Auftrag prüfen & Buch starten',story_plan:'Story-Ideen',story_generation:'Geschichten',characters:'Figuren',illustrations:'Illustrationen',book_review:'Fertiges Buch prüfen',print_ready:'Buchlayout fertig',printing:'Auf Druck warten',printed:'Versand vorbereiten',shipped:'Auftrag abschließen',completed:'Abgeschlossen'})[s]||'Auftrag öffnen'}
 function stageIndex(s){return Math.max(0,STAGES.indexOf(s))}
 function bookProgressPercent(r){const s=prodStage(r);if(['print_ready','printing','printed','shipped','completed'].includes(s))return 100;const i=Math.max(0,BOOK_STAGES.indexOf(s));return Math.round((i/Math.max(1,BOOK_STAGES.length-1))*100)}
 
@@ -249,12 +249,27 @@ async function loadRequest(id){
   S.request=rows[0];S.storyBatch=null;
   await Promise.all([loadStories(),loadCharacters()]);
   await loadRequestScenes();
+  await loadQualityChecks();
 }
 async function loadStories(){if(!S.request)return;S.stories=await rest('customer_request_stories?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=position.asc')}
 async function loadCharacters(){if(!S.request)return;S.characters=await rest('customer_request_characters?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=created_at.asc')}
 async function loadScenes(storyId){S.scenes[storyId]=await rest('customer_request_story_scenes?select=*&request_story_id=eq.'+encodeURIComponent(storyId)+'&order=scene_index.asc');return S.scenes[storyId]}
 async function loadVariants(sceneId){S.variants[sceneId]=await rest('story_image_variants?select=*&scene_id=eq.'+encodeURIComponent(sceneId)+'&order=variant_index.asc');return S.variants[sceneId]}
 async function loadRequestScenes(){const ids=S.stories.map(x=>x.id);if(!ids.length){S.requestScenes=[];return S.requestScenes}const f=ids.join(',');S.requestScenes=await rest('customer_request_story_scenes?select=*&request_story_id=in.('+f+')&order=request_story_id.asc,scene_index.asc');return S.requestScenes}
+async function loadQualityChecks(){
+  if(!S.request){S.qualityChecks=[];return S.qualityChecks}
+  try{
+    let rows=await rest('story4kids_quality_checks?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=stage.asc,scope.asc,check_key.asc');
+    S.qualityChecks=rows||[];
+    const have=new Set(S.qualityChecks.map(x=>x.stage)),ready=S.stories.filter(x=>x.status==='ready'&&x.story_project_id).length;
+    const allSelected=S.requestScenes.length>0&&S.requestScenes.every(x=>x.status==='selected'&&x.selected_variant_id);
+    const stages=[['input',true],['story_plan',S.stories.length===15],['stories',ready===15],['characters',S.characters.length>0&&S.characters.every(x=>x.status==='approved'&&x.reference_storage_path)],['illustrations',allSelected],['review_pdf',!!S.request.review_pdf_storage_path],['print_pdf',!!S.request.book_pdf_storage_path]];
+    let ran=false;
+    for(const [stage,applicable] of stages){if(applicable&&!have.has(stage)){try{await invoke('story4kids-quality-gate',{action:'check',request_id:S.request.id,stage,semantic:false});ran=true}catch{}}}
+    if(ran){rows=await rest('story4kids_quality_checks?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=stage.asc,scope.asc,check_key.asc');S.qualityChecks=rows||[]}
+  }catch(e){S.qualityChecks=[]}
+  return S.qualityChecks;
+}
 async function loadVariantCounts(sceneIds){
   const counts={};
   if(!sceneIds?.length)return counts;
@@ -327,17 +342,20 @@ function dashboardView(){
   const runningCount=real.filter(r=>r?.status==='generating').length;
   const reviewCount=real.filter(r=>prodStage(r)==='book_review'&&!!r?.review_pdf_storage_path&&!r?.book_approved_at).length;
   const newCount=real.filter(r=>prodStage(r)==='new').length;
+  const testNew=real.filter(r=>prodStage(r)==='new'&&r?.metadata?.synthetic_test===true&&r?.metadata?.pipeline_mode==='test');
   const attentionCount=newCount+reviewCount;
   const focus=real.filter(r=>prodStage(r)==='book_review'&&r?.review_pdf_storage_path&&!r?.book_approved_at).slice(0,2);
   main.innerHTML=`<section class="dash-hero"><div class="dash-kicker">Story4Kids Produktion</div><div class="dash-head"><div><h1>Deine Bücher</h1><p>Alles Wichtige auf einen Blick. Laufende Produktionen arbeiten serverseitig weiter.</p></div><button class="dash-add" id="openCustomerForm" aria-label="Neuer Auftrag">＋</button></div><div class="dash-stats"><div><strong>${openCount}</strong><span>offen</span></div><div><strong>${runningCount}</strong><span>läuft automatisch</span></div><div class="${reviewCount?'needs':''}"><strong>${reviewCount}</strong><span>zur Prüfung</span></div></div></section>
   ${attentionCount?`<div class="dash-section-head"><div><span class="dash-eyebrow">Jetzt wichtig</span><b>${attentionCount===1?'1 Aufgabe wartet auf dich':attentionCount+' Aufgaben warten auf dich'}</b></div></div>${focus.map(r=>`<a class="focus-card" href="#book?id=${esc(r.id)}"><div class="focus-icon">✓</div><div><b>${esc(r.child_first_name)}s Buch prüfen</b><span>Review-PDF ist fertig und wartet auf deine Freigabe.</span></div><strong>Öffnen →</strong></a>`).join('')}${newCount?`<div class="focus-card soft-focus"><div class="focus-icon">＋</div><div><b>${newCount===1?'1 neuer Auftrag':'Neue Aufträge'}</b><span>${newCount===1?'Der Auftrag kann gestartet werden.':newCount+' Aufträge können gestartet werden.'}</span></div></div>`:''}`:''}
   <div class="dash-quick"><button id="newOrderBtn"><span>＋</span><b>Neuer Auftrag</b><small>Kundenformular</small></button><button id="showRunningBtn"><span>⚡</span><b>${runningCount} aktiv</b><small>Server-Produktion</small></button></div>
+  ${testNew.length?`<button class="btn warn" id="startAllTests">🧪 ${testNew.length} Testaufträge parallel starten</button>`:''}
   <div class="dash-section-head orders-head"><div><span class="dash-eyebrow">Buchaufträge</span><b>${filter==='open'?'Offene Produktion':filter==='done'?'Abgeschlossen':'Alle Aufträge'}</b></div><span>${visible.length}</span></div>
   <div class="tabs dash-tabs"><button class="tab ${filter==='open'?'active':''}" data-filter="open">Offen ${openCount}</button><button class="tab ${filter==='done'?'active':''}" data-filter="done">Fertig ${doneCount}</button><button class="tab ${filter==='all'?'active':''}" data-filter="all">Alle ${real.length}</button></div>
   ${visible.length?visible.map(r=>{const s=prodStage(r),running=r?.status==='generating',pct=bookProgressPercent(r);return `<a class="order-card dash-order ${running?'is-running':''}" href="#request?id=${esc(r.id)}"><div class="dash-order-top"><div class="order-avatar">${esc((r.child_first_name||'?').slice(0,1).toUpperCase())}</div><div class="order-identity"><b>${esc(r.child_first_name)}</b><span>${esc(r.child_age)} Jahre · ${esc(r.customer_name)}</span></div><span class="pill ${stageClass(s)}">${running?'<i class="live-dot"></i>':''}${esc(stageLabel(s))}</span></div><div class="order-progress"><span style="width:${pct}%"></span></div><div class="dash-order-bottom"><div><span>${pct}%</span><b>${esc(nextAction(r))}</b></div><strong>›</strong></div></a>`}).join(''):'<div class="dash-empty"><div>📚</div><b>Noch keine Aufträge hier</b><span>Neue Kundenaufträge erscheinen automatisch in dieser Übersicht.</span></div>'}`;
   const openForm=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=5','_blank');
   $('#openCustomerForm').onclick=openForm;$('#newOrderBtn').onclick=openForm;
   $('#showRunningBtn').onclick=()=>{const first=real.find(r=>r?.status==='generating');if(first)go('request',{id:first.id});else toast('Aktuell läuft keine automatische Produktion.','ok')};
+  if($('#startAllTests'))$('#startAllTests').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Tests werden parallel gestartet …');const targets=S.requests.filter(r=>prodStage(r)==='new'&&r?.metadata?.synthetic_test===true&&r?.metadata?.pipeline_mode==='test');const res=await Promise.allSettled(targets.map(r=>invoke('story4kids-test-pipeline',{action:'start',request_id:r.id})));const ok=res.filter(x=>x.status==='fulfilled').length;await loadRequests();toast(`${ok}/${targets.length} Testaufträge gestartet. Sie laufen serverseitig parallel weiter.`,'ok');dashboardView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(b))busy(b,false)}};
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>go('dashboard',{filter:b.dataset.filter}));
 }
 function phaseRow(icon,title,subtitle,state,routeName,done,current,locked=false){const href=routeName&&!locked?`href="#${routeName}"`:'';return `<a class="phase-row ${done?'done':''} ${current?'current':''} ${locked?'locked':''}" ${href}><div class="phase-icon">${done?'✓':icon}</div><div class="phase-main"><b>${esc(title)}</b><span>${esc(subtitle)}</span></div><div class="phase-state">${esc(state)}</div></a>`}
@@ -345,6 +363,28 @@ function compactFlow(stage){
   const steps=[['Kunde','new'],['Ideen','story_plan'],['Text','story_generation'],['Figuren','characters'],['Bilder','illustrations'],['Buch','book_review']];
   const current=Math.min(5,Math.max(0,BOOK_STAGES.indexOf(stage)));
   return `<div class="flowbar">${steps.map((x,i)=>`<div class="flowdot ${i<current?'done':i===current?'now':'future'}"><i>${i<current?'✓':i+1}</i><span>${x[0]}</span></div>`).join('')}</div>`;
+}
+const QUALITY_STAGE_LABELS={input:'Formular',story_plan:'Story-Ideen',stories:'Geschichten',characters:'Figuren',illustrations:'Bilder',review_pdf:'Review-PDF',print_pdf:'Buchlayout'};
+const QUALITY_CHECK_LABELS={required_form_data:'Pflichtdaten vollständig',ai_consent:'KI-Zustimmung',personalization_present:'Personalisierung vorhanden',exact_15_ideas:'15 Story-Ideen',indices_1_to_15:'Reihenfolge 1–15',single_finale:'Finale nur bei Geschichte 15',collection_variety:'Abwechslung der Sammlung',illustrations_planned_2_to_3:'2–3 Bildszenen geplant',story_idea_structure:'Story-Ideen sinnvoll aufgebaut',exact_15_ready:'15 Geschichten vollständig',word_count:'750–850 Wörter',page_structure:'10 Storyabschnitte',illustration_prompt_count:'2–3 Bildmomente',protagonist_consistency:'Kind stimmt mit Auftrag überein',no_internal_placeholders:'Keine internen Platzhalter',age_language_heuristic:'Sprache passend zum Alter',planned_personalization:'Formulardaten in Story berücksichtigt',form_interest_coverage:'Interessen berücksichtigt',semantic_story_quality:'Logik · Kindgerechtheit · Konsistenz',protagonist_reference:'Hauptfigur freigegeben',requested_pet_consistency:'Haustier-Konsistenz',scene_coverage:'2–3 Szenen je Geschichte',all_scenes_selected:'Alle Bilder ausgewählt',selected_assets_exist:'Bilddateien vollständig',production_images_not_placeholders:'Keine Testbilder im Echtbetrieb',review_pdf_exists:'Review-PDF vorhanden',review_contains_15_stories:'15 Geschichten im Review',print_pdf_exists:'Buch-PDF vorhanden',book_format_defined:'Buchformat definiert'};
+function qualityPanel(rows=[]){
+  if(!rows.length)return `<div class="card" id="qualityPanel"><div class="row"><b>Automatische Qualitätsprüfung</b><span class="pill">wartet</span></div><div class="desc">Prüfungen erscheinen automatisch, sobald der jeweilige Produktionsschritt vollständig ist.</div></div>`;
+  const failed=rows.filter(x=>x.status==='failed'&&x.blocking),warn=rows.filter(x=>x.status==='warning'),passed=rows.filter(x=>x.status==='passed');
+  const stages=[...new Set(rows.map(x=>x.stage))];
+  return `<div class="card" id="qualityPanel"><div class="row"><div><b>Automatische Qualitätsprüfung</b><div class="desc">${passed.length} bestanden · ${warn.length} Warnungen · ${failed.length} blockierend</div></div><span class="pill ${failed.length?'red':warn.length?'warn':'ok'}">${failed.length?'STOP':warn.length?'PRÜFEN':'BESTANDEN'}</span></div>${stages.map(st=>{const a=rows.filter(x=>x.stage===st),f=a.filter(x=>x.status==='failed'&&x.blocking).length,w=a.filter(x=>x.status==='warning').length;return `<div class="statusline"><b>${esc(QUALITY_STAGE_LABELS[st]||st)}</b><span class="${f?'no':w?'no':'yes'}">${f?'✕ '+f+' Fehler':w?'△ '+w+' Hinweis':'✓ geprüft'}</span></div>`}).join('')}${failed.length||warn.length?`<details class="overview-card" style="margin-top:9px"><summary><div class="row"><b>Hinweise & Fehler ansehen</b><span class="chev">⌄</span></div></summary><div class="inside">${[...failed,...warn].slice(0,20).map(x=>`<div class="rule ${x.status==='failed'?'red':'warn'}"><b>${esc(QUALITY_CHECK_LABELS[x.check_key]||x.check_key)}</b><br>${esc(QUALITY_STAGE_LABELS[x.stage]||x.stage)}${x.scope!=='global'?' · '+esc(x.scope):''}</div>`).join('')}</div></details>`:''}</div>`;
+}
+function processPanel(r,stage,ready,charApproved,charTotal,selected,sceneTotal){
+  const qi=st=>{const a=S.qualityChecks.filter(x=>x.stage===st);if(a.some(x=>x.status==='failed'&&x.blocking))return '✕ Fehler';if(a.some(x=>x.status==='warning'))return '△ Hinweis';if(a.length)return '✓ geprüft';return 'wartet'};
+  const rows=[
+    ['1 · Formulardaten','Pflichtdaten, Zustimmung und Personalisierung','input',true],
+    ['2 · 15 Story-Ideen','Struktur, Abwechslung, Finale, 2–3 Bilder','story_plan',S.stories.length===15],
+    ['3 · 15 Geschichten','750–850 Wörter, Alterssprache, Logik, Formulardaten','stories',ready===15],
+    ['4 · Figuren','Hauptfigur und gewünschte Begleiter konsistent','characters',charTotal>0&&charApproved===charTotal],
+    ['5 · Illustrationen','2–3 Szenen je Story, alle Dateien vorhanden','illustrations',sceneTotal>0&&selected===sceneTotal],
+    ['6 · Review-PDF','Automatisch erstellt – danach prüfst DU das komplette Buch','review_pdf',!!r.review_pdf_storage_path],
+    ['7 · Kinderbuch-Layout','Nach deiner Freigabe automatisch 21 × 21 cm','print_pdf',!!r.book_pdf_storage_path],
+    ['8 · Umschlag','Vorderseite, Rückseite und vorläufiger Rücken automatisch','cover_pdf',!!r.cover_pdf_storage_path]
+  ];
+  return `<details class="overview-card" open><summary><div class="row"><div><b>So läuft dieser Auftrag</b><div class="desc">Automatik + Qualitätskontrollen zwischen den Schritten</div></div><span class="chev">⌄</span></div></summary><div class="inside">${rows.map(x=>`<div class="statusline"><div><b>${x[0]}</b><div class="desc">${x[1]}</div></div><span class="${x[3]?'yes':'no'}">${x[2]==='cover_pdf'?(x[3]?'✓ fertig':'wartet'):qi(x[2])}</span></div>`).join('')}</div></details>`;
 }
 function requestView(){
   shell(true);activeNav('dashboard');const r=S.request;if(!r){main.innerHTML='<div class="empty">Auftrag wird geladen …</div>';return}
@@ -417,6 +457,8 @@ function requestView(){
     taskTitle=nextAction(r);taskText='Die Buchproduktion ist abgeschlossen. Dieser Auftrag liegt jetzt im Druck-/Versandbereich.';taskButton=`<button class="btn" onclick="go('print')">Zum Druckbereich</button>`;
   }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
 
+  const qualityBlockers=S.qualityChecks.filter(x=>x.status==='failed'&&x.blocking).length;
+  if(qualityBlockers){taskTitle='Qualitätsprüfung gestoppt';taskText=`${qualityBlockers} blockierende Prüfung${qualityBlockers===1?'':'en'} müssen korrigiert werden, bevor dieser Auftrag sicher weitergeht.`;taskButton=`<button class="btn danger" onclick="document.getElementById('qualityPanel')?.scrollIntoView({behavior:'smooth'})">Qualitätsfehler ansehen</button>`}
   const storySummary=ready===15?'15/15 fertig':(stage==='story_plan'||planned>0)?`${approved}/15 Ideen frei`:S.stories.length===15?`${ready}/15 fertig`:`${approved}/15 Ideen`;
   const charSummary=charTotal?`${charApproved}/${charTotal} frei`:'noch offen';
   const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
@@ -424,6 +466,8 @@ function requestView(){
   <div class="row"><div><h2 style="margin-bottom:2px">${esc(r.child_first_name)}</h2><div class="small">${esc(r.customer_name)} · ${new Date(r.submitted_at).toLocaleDateString('de-AT')}</div></div><div class="wrap">${testMode?'<span class="pill warn">TESTMODUS · SPAR</span>':''}<span class="pill ${stageClass(stage)}">${esc(stageLabel(stage))}</span></div></div>
   <div class="contact">${contactHtml(r)}</div>${meta.synthetic_test===true?`<div class="rule ${testMode?'warn':'ok'}"><b>🧪 Testkunde · ${testMode?'Sparmodus':'Vollmodus'}</b><br>${testMode?'Dummy-Texte/Bilder dürfen verwendet werden. Der Produktions-Vollmodus bleibt unverändert erhalten.':'Dieser Test verwendet wieder die echte Produktions-KI und kann OpenAI-Kosten verursachen.'}<button class="btn ${testMode?'secondary':'warn'}" id="togglePipelineMode">${testMode?'Auf Vollmodus umstellen':'Sparmodus aktivieren'}</button></div>`:''}${compactFlow(stage)}
   <div class="bigstep"><div class="eyebrow">Dein nächster Schritt</div><h3>${esc(taskTitle)}</h3><p>${esc(taskText)}</p>${taskButton}</div>
+  ${processPanel(r,stage,ready,charApproved,charTotal,selected,sceneTotal)}
+  ${qualityPanel(S.qualityChecks)}
   ${failed?`<div class="issuebox"><b>${failed} Problem${failed===1?'':'e'} erkannt</b><br>Nur diese Ausnahmen brauchen deine Aufmerksamkeit.</div>`:''}
   <div class="simple-status"><div><b>${storySummary}</b><span>Geschichten</span></div><div><b>${charSummary}</b><span>Figuren</span></div><div><b>${imageSummary}</b><span>Illustrationen</span></div><div><b>${r.review_pdf_storage_path?'Review fertig':'noch offen'}</b><span>Buch</span></div></div>
   <div class="section-title">Details nur bei Bedarf</div>
@@ -891,6 +935,7 @@ async function approveReviewPdf(btn){
 async function bookView(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;
   await loadRequestScenes();
+  await loadQualityChecks();
   const storyReady=S.stories.filter(x=>x.status==='ready').length;
   const charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved');
   const prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
@@ -912,21 +957,29 @@ async function bookView(){
   const printReady=!!printPath;
   const printBuilding=approved&&!printReady;
   let coverState=null;
-  try{if(printReady)coverState=await invoke('story4kids-cover-pdf',{action:'status',request_id:S.request.id})}catch(e){coverState={error:e.message}}
+  try{if(printReady)coverState=await invoke('story4kids-cover-pdf-v2',{action:'status',request_id:S.request.id})}catch(e){coverState={error:e.message}}
   const coverPath=coverState?.request?.cover_pdf_storage_path||S.request.cover_pdf_storage_path||null;
   const coverMeta=S.request.metadata?.cover_pdf||coverState?.job?.preflight||{};
   const coverReady=!!coverPath;
   const coverFailed=coverState?.job?.status==='failed';
   const coverBuilding=printReady&&!coverReady&&!coverFailed;
+  const qualityRequired=S.request.metadata?.quality_required===true;
+  const qualityBlockers=S.qualityChecks.filter(x=>x.status==='failed'&&x.blocking);
+  const qHas=(stage,key,status='passed')=>S.qualityChecks.some(x=>x.stage===stage&&x.check_key===key&&x.status===status);
+  const wordChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='word_count'&&x.status==='passed').length;
+  const semanticChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='semantic_story_quality'&&['passed','warning','skipped'].includes(x.status)).length;
+  const qualityReadyForApproval=!qualityRequired||(qualityBlockers.length===0&&qHas('input','required_form_data')&&qHas('story_plan','exact_15_ideas')&&qHas('stories','exact_15_ready')&&qHas('characters','protagonist_reference')&&qHas('illustrations','all_scenes_selected')&&qHas('review_pdf','review_pdf_exists')&&wordChecks===15&&semanticChecks===15);
   let reviewBlock='';
   if(reviewReady){
     reviewBlock=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Öffne sie und prüfe Geschichten, Reihenfolge und alle ausgewählten Bilder.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>`;
     if(!approved){
-      reviewBlock+=`<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>`;
+      if(qualityBlockers.length)reviewBlock+=`<div class="rule red"><b>Freigabe gesperrt.</b><br>${qualityBlockers.length} blockierende Qualitätsprüfung${qualityBlockers.length===1?'':'en'} müssen zuerst korrigiert werden.</div>`;
+      else if(!qualityReadyForApproval)reviewBlock+=`<div class="rule warn"><b>Automatische Qualitätsprüfung läuft noch.</b><br>Die Freigabe erscheint, sobald alle Prüfungen für Formular, Storys, Figuren, Bilder und Review vollständig sind.</div>`;
+      else reviewBlock+=`<button class="btn ok" id="approveReviewPdf">✓ Review geprüft & freigeben</button>`;
     }else if(printReady){
-      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Der druckfertige Innenteil ist fertig.</div><div class="book-preview"><div class="big">📘</div><b>Innenteil ist fertig</b><span>${esc(printMeta.page_count||'–')} Seiten · 8,5 × 8,5 Zoll</span></div><button class="btn ok" id="openPrintPdf">📘 Innenteil öffnen</button>`;
+      reviewBlock+=`<div class="rule ok"><b>Review freigegeben ✓</b><br>Der gesetzte Kinderbuch-Innenteil ist fertig.</div><div class="book-preview"><div class="big">📘</div><b>Innenteil ist fertig</b><span>${esc(printMeta.page_count||'–')} Seiten · ${printMeta.format_key==='210x210mm'?'21 × 21 cm':esc(printMeta.format_key||'Buchformat')}</span></div><button class="btn ok" id="openPrintPdf">📘 Innenteil öffnen</button>`;
       if(coverReady){
-        reviewBlock+=`<div class="book-preview"><div class="big">🎨</div><b>Umschlag ist fertig</b><span>Rückseite + Buchrücken + Vorderseite · Rücken ${esc(coverMeta.spine_width_in||'–')} Zoll</span></div><button class="btn ok" id="openCoverPdf">🎨 Umschlag öffnen</button><div class="rule ok"><b>Druckpaket komplett ✓</b><br>Innenteil und Umschlag sind getrennt fertig und können später gemeinsam an Lulu gesendet werden.</div>`;
+        reviewBlock+=`<div class="book-preview"><div class="big">🎨</div><b>Umschlag-Layout ist fertig</b><span>Rückseite + Rücken + Vorderseite${coverMeta.spine_width_mm?' · Rücken ca. '+esc(coverMeta.spine_width_mm)+' mm':''}${coverMeta.spine_provisional?' · vorläufig':''}</span></div><button class="btn ok" id="openCoverPdf">🎨 Umschlag öffnen</button><div class="rule ok"><b>Buchlayout komplett ✓</b><br>Innenteil und Cover sind im 21 × 21-cm-System aufgebaut. Der exakte Druckrücken wird später mit dem gewählten Druckanbieter/Papier finalisiert.</div>`;
       }else if(coverFailed){
         reviewBlock+=`<div class="rule red"><b>Umschlag-Erstellung gestoppt.</b><br>${esc(coverState?.job?.last_error?.message||'Unbekannter Fehler')}</div><button class="btn" id="startCoverPdf">Umschlag erneut erstellen</button>`;
       }else{
@@ -952,9 +1005,9 @@ async function bookView(){
   if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
   if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
   if($('#openCoverPdf'))$('#openCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird geöffnet …');await openPrivatePdf(coverPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
-  if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf',{action:'start',request_id:S.request.id,regenerate:true});toast('Umschlag wird serverseitig neu erstellt.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf-v2',{action:'start',request_id:S.request.id,regenerate:true});toast('Umschlag wird serverseitig neu erstellt.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
-  if(running||printBuilding||coverBuilding)setTimeout(async()=>{if(route()!=='book')return;try{if(printBuilding||coverBuilding)await loadRequest(S.request.id);await bookView()}catch(e){}},5000);
+  if(running||printBuilding||coverBuilding||(reviewReady&&!approved&&qualityRequired&&!qualityReadyForApproval))setTimeout(async()=>{if(route()!=='book')return;try{await loadRequest(S.request.id);await bookView()}catch(e){}},4000);
 }
 
 async function maybeAdvanceToBookReview(){

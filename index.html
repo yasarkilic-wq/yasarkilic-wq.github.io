@@ -134,13 +134,13 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v5.8-2026-08-15-one-action-admin';
+const APP_VERSION='workflow-v6.0-2026-08-16-single-master';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
 const S={
   session:null, requests:[], request:null, stories:[], characters:[], requestScenes:[], scenes:{}, variants:{}, readiness:null,
-  imageUrls:new Map(), currentStory:null, storyBatch:null, qualityChecks:[]
+  imageUrls:new Map(), currentStory:null, storyBatch:null, fullPipeline:null, qualityChecks:[]
 };
 
 const $=s=>document.querySelector(s);
@@ -248,7 +248,7 @@ async function loadRequests(){
 }
 async function loadRequest(id){
   const rows=await rest('customer_requests?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!rows.length)throw new Error('Auftrag nicht gefunden');
-  S.request=rows[0];S.storyBatch=null;
+  S.request=rows[0];S.storyBatch=null;S.fullPipeline=null;
   await Promise.all([loadStories(),loadCharacters()]);
   await loadRequestScenes();
   await loadQualityChecks();
@@ -396,29 +396,32 @@ function requestView(){
   const approved=S.stories.filter(x=>['approved','ready','failed'].includes(x.status)&&x.approved_at).length;
   const ready=S.stories.filter(x=>x.status==='ready').length;
   const failed=S.stories.filter(x=>x.status==='failed').length;
+  const needsReview=S.stories.filter(x=>x.status==='needs_review').length;
   const charApproved=S.characters.filter(x=>x.status==='approved').length,charTotal=S.characters.length;
   const selected=S.requestScenes.filter(x=>x.status==='selected'||x.selected_variant_id).length,sceneTotal=S.requestScenes.length;
   const sceneStories=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
   const storedStage=prodStage(r);
   let stage=storedStage;
   // Selbstheilende Anzeige: der echte Inhalt ist maßgeblich, falls ein alter Stage-Wert hängen blieb.
+  const storyQualityReady=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='semantic_story_quality'&&['passed','skipped'].includes(x.status)).length===15&&!S.qualityChecks.some(x=>x.stage==='stories'&&x.blocking&&x.status==='failed');
   if(BOOK_STAGES.includes(storedStage)){
     if(ready===15 && charTotal>0 && charApproved===charTotal && sceneTotal>0 && selected===sceneTotal) stage='book_review';
     else if(ready===15 && charTotal>0 && charApproved===charTotal) stage='illustrations';
-    else if(ready===15) stage='characters';
+    else if(ready===15&&storyQualityReady) stage='characters';
     else if(S.stories.length===15 && planned===0) stage='story_generation';
     else if(S.stories.length===15) stage='story_plan';
   }
   const hasContract=!!meta.story_contract,hasPlan=!!meta.story_plan&&S.stories.length===15;
-  const batchJob=S.storyBatch?.job||null;
-  const activeStory=S.stories.find(x=>x.status==='generating');
-  const fullPipelineStoryRunning=r.status==='generating'&&stage==='story_generation'&&ready<15;
+  const batchJob=S.storyBatch?.job||null,fullJob=S.fullPipeline?.job||null;
+  const activeStories=S.stories.filter(x=>x.status==='generating').map(x=>Number(x.position));
+  const activePositions=fullJob?.last_error?.active_positions||batchJob?.last_error?.active_positions||activeStories;
+  const fullPipelineStoryRunning=fullJob?.status==='running'&&fullJob?.stage==='stories';
   const batchRunning=batchJob?.status==='running'||fullPipelineStoryRunning;
-  const batchPos=Number(batchJob?.current_position||activeStory?.position||0);
+  const batchPos=Number(batchJob?.current_position||activePositions?.[0]||0);
   let taskTitle=nextAction(r),taskText='',taskButton='';
   if(stage==='new'){
     taskTitle='Buchproduktion starten';
-    taskText='Ein Klick startet serverseitig Story Contract → 15 Ideen → 15 Geschichten → Figuren → Bilder → Review-PDF. Danach ist erst deine Endkontrolle nötig.';
+    taskText='Ein Klick startet genau einen Gesamtauftrag: Plan → 15 Geschichten → Qualitätsprüfung → Figuren → Bilder → Review-PDF. Bis zu 3 Texte und 2 Bilder laufen kontrolliert parallel.';
     taskButton='<button class="btn" id="prepareOrder">Buchproduktion starten</button>';
   }else if(stage==='story_plan'){
     if(r.status==='generating'){
@@ -429,12 +432,12 @@ function requestView(){
   }else if(stage==='story_generation'){
     if(batchRunning){
       taskTitle='Geschichten werden automatisch erstellt';
-      taskText=`${ready}/15 Geschichten fertig.${batchPos?' Aktuell wird Geschichte '+batchPos+' erstellt.':''} Die Produktion läuft serverseitig weiter – du musst nichts starten.`;
+      taskText=`${ready}/15 Geschichten fertig.${activePositions?.length?' Parallel aktiv: '+activePositions.join(', ')+'.':batchPos?' Aktuell Geschichte '+batchPos+'.':''} Ein Gesamtauftrag läuft serverseitig bis zur Review-PDF weiter.`;
       taskButton=`<button class="btn secondary" onclick="go('production',{id:'${esc(r.id)}'})">Live-Fortschritt ansehen</button>`;
     }else{
-      taskTitle=failed?'Fehler automatisch beheben':'Geschichten erstellen';
-      taskText=`${ready}/15 Geschichten fertig${failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;
-      taskButton=`<button class="btn" onclick="go('production',{id:'${esc(r.id)}'})">${failed?'Probleme öffnen':'Geschichten erstellen'}</button>`;
+      taskTitle=needsReview?'Qualitätskorrektur fortsetzen':failed?'Fehler automatisch beheben':'Buchproduktion fortsetzen';
+      taskText=`${ready}/15 Geschichten fertig${needsReview?' · '+needsReview+' werden gezielt korrigiert':failed?' · '+failed+' brauchen Aufmerksamkeit':''}.`;
+      taskButton='<button class="btn" id="prepareOrder">Gesamtauftrag fortsetzen</button>';
     }
   }else if(stage==='characters'){
     if(r.status==='generating'){
@@ -449,7 +452,7 @@ function requestView(){
       taskText=`${q.processed_scenes??selected}/${q.total_scenes??sceneTotal??'–'} Bilder fertig. Deine fertige Arbeit bleibt erhalten. Der Server versucht alle 15 Minuten automatisch weiterzumachen, sobald OpenAI wieder Guthaben akzeptiert.`;
       taskButton=`<button class="btn secondary" onclick="go('settings')">KI & Budget öffnen</button>`;
     }else if(r.status==='generating'){
-      taskTitle='Illustrationen werden erstellt';taskText=`${selected}/${sceneTotal||'–'} Bildszenen automatisch erstellt und ausgewählt. Keine Aktion nötig.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Fortschritt ansehen</button>`;
+      taskTitle='Illustrationen werden erstellt';taskText=`${selected}/${sceneTotal||'–'} Bildszenen fertig. Höchstens zwei Bilder laufen gleichzeitig; Charakterreferenz und Stil bleiben zentral festgelegt.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Fortschritt ansehen</button>`;
     }else{
       taskTitle='Illustrationen prüfen';taskText=`${selected}/${sceneTotal||'–'} Bildszenen ausgewählt. Nur fehlerhafte oder gewünschte Szenen einzeln korrigieren.`;taskButton=`<button class="btn secondary" onclick="go('illustrations',{id:'${esc(r.id)}'})">Details / Korrektur</button>`;
     }
@@ -460,7 +463,8 @@ function requestView(){
   }else {taskTitle='Auftrag abgeschlossen';taskText='Dieser Auftrag ist vollständig erledigt.';taskButton=`<button class="btn" onclick="go('dashboard',{filter:'done'})">Zur Übersicht</button>`}
 
   const qualityBlockers=S.qualityChecks.filter(x=>x.status==='failed'&&x.blocking).length;
-  if(qualityBlockers){taskTitle='Qualitätsprüfung gestoppt';taskText=`${qualityBlockers} blockierende Prüfung${qualityBlockers===1?'':'en'} müssen korrigiert werden, bevor dieser Auftrag sicher weitergeht.`;taskButton=`<button class="btn danger" onclick="const d=document.getElementById('orderDetails');if(d)d.open=true;setTimeout(()=>document.getElementById('qualityPanel')?.scrollIntoView({behavior:'smooth'}),80)">Qualitätsfehler ansehen</button>`}
+  if(qualityBlockers&&needsReview&&fullJob?.status==='running'){taskTitle='Qualitätskorrektur läuft automatisch';taskText=`${needsReview} betroffene Geschichte${needsReview===1?' wird':'n werden'} gezielt überarbeitet. Alle bestandenen Geschichten bleiben unverändert.`;taskButton=''}
+  else if(qualityBlockers){taskTitle='Qualitätsprüfung braucht Aufmerksamkeit';taskText=`${qualityBlockers} blockierende Prüfung${qualityBlockers===1?'':'en'} konnten nicht automatisch behoben werden.`;taskButton=`<button class="btn danger" onclick="const d=document.getElementById('orderDetails');if(d)d.open=true;setTimeout(()=>document.getElementById('qualityPanel')?.scrollIntoView({behavior:'smooth'}),80)">Qualitätsfehler ansehen</button>`}
   const storySummary=ready===15?'15/15 fertig':(stage==='story_plan'||planned>0)?`${approved}/15 Ideen frei`:S.stories.length===15?`${ready}/15 fertig`:`${approved}/15 Ideen`;
   const charSummary=charTotal?`${charApproved}/${charTotal} frei`:'noch offen';
   const imageSummary=sceneTotal?`${selected}/${sceneTotal} gewählt`:'noch offen';
@@ -524,9 +528,10 @@ async function prepareRealOrder(btn){
     }
     const d=await invoke('story4kids-pipeline-start',{request_id:S.request.id});
     await loadRequest(S.request.id);
-    await Promise.all([loadStories(),loadCharacters(),loadRequestScenes()]);
-    toast(d.already_running?'Die vollständige Buchproduktion läuft bereits serverseitig.':'Buchproduktion gestartet: Ideen → Geschichten → Figuren → Bilder → Review-PDF.','ok');
+    await Promise.all([loadStories(),loadCharacters(),loadRequestScenes(),loadFullPipelineStatus(S.request.id)]);
+    toast(d.already_running?'Der eine Gesamtauftrag läuft bereits serverseitig.':'Ein Gesamtauftrag gestartet: Plan → Geschichten → Qualität → Figuren → Bilder → Review-PDF.','ok');
     requestView();
+    if(S.fullPipeline?.job?.status==='running')startStoryBatchPolling(S.request.id);
   }catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err');await loadRequest(S.request.id);requestView()}finally{busy(btn,false)}
 }
 window.showContract=function(){
@@ -539,24 +544,24 @@ window.showContract=function(){
 
 function productionView(){
   shell(true);activeNav('dashboard');if(!S.request){main.innerHTML='<div class="empty">Bitte zuerst einen Auftrag öffnen.</div>';return}
-  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length;
-  const batchJob=S.storyBatch?.job||null,batchRunning=batchJob?.status==='running'||(S.request?.status==='generating'&&prodStage(S.request)==='story_generation'),batchPaused=batchJob?.status==='paused_quota',batchDoneErrors=batchJob?.status==='completed_with_errors';
-  const activeStory=S.stories.find(x=>x.status==='generating');
-  const batchPos=Number(batchJob?.current_position||activeStory?.position||0),batchErr=batchJob?.last_error||{};
+  const planned=S.stories.filter(x=>x.status==='planned').length,ap=S.stories.filter(x=>x.approved_at).length,rd=S.stories.filter(x=>x.status==='ready').length,fail=S.stories.filter(x=>x.status==='failed').length,needsReview=S.stories.filter(x=>x.status==='needs_review').length;
+  const batchJob=S.storyBatch?.job||null,fullJob=S.fullPipeline?.job||null,batchRunning=batchJob?.status==='running'||fullJob?.status==='running',batchPaused=[batchJob?.status,fullJob?.status].includes('paused_quota'),batchDoneErrors=[batchJob?.status,fullJob?.status].includes('completed_with_errors');
+  const activePositions=fullJob?.last_error?.active_positions||batchJob?.last_error?.active_positions||S.stories.filter(x=>x.status==='generating').map(x=>Number(x.position));
+  const batchPos=Number(batchJob?.current_position||activePositions?.[0]||0),batchErr=fullJob?.last_error||batchJob?.last_error||{};
   const stage=prodStage(S.request),ideaMode=stage==='story_plan'||planned>0;$('#headerSub').textContent=ideaMode?'Story-Ideen':'Geschichten';
   const problemItems=S.stories.filter(x=>x.status==='failed'||x.status==='needs_review');
   main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button>
   <div class="row"><div><h2 style="margin-bottom:2px">${ideaMode?'Story-Ideen':'Geschichten'}</h2><div class="small">${esc(S.request.child_first_name)} · nur dieser Auftrag</div></div><span class="pill">15</span></div>
   <div class="simple-status"><div><b>${ap}/15</b><span>Ideen freigegeben</span></div><div><b>${rd}/15</b><span>Geschichten fertig</span></div></div>
-  ${fail?`<div class="issuebox"><b>${fail} Ausnahme${fail===1?'':'n'}</b><br>Nur diese Geschichten müssen geprüft oder erneut erzeugt werden.</div>`:''}
+  ${fail||needsReview?`<div class="issuebox"><b>${fail+needsReview} gezielte Korrektur${fail+needsReview===1?'':'en'}</b><br>Nur diese Geschichten werden geprüft oder repariert; fertige Texte bleiben erhalten.</div>`:''}
   ${ideaMode&&planned?`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>15 Story-Ideen freigeben</h3><p>Prüfe nur Titel und Kurzinhalt. Einzelheiten bleiben eingeklappt.</p><button class="btn" id="approveAll">Alle ${planned} offenen Ideen freigeben</button></div>`:''}
-  ${!planned&&rd<15?(batchRunning?`<div class="bigstep"><div class="eyebrow">Server-Produktion läuft</div><h3>${rd}/15 Geschichten fertig</h3><p>${batchPos?'Aktuell Geschichte '+batchPos+'. ':''}Der Auftrag läuft serverseitig weiter. Du kannst die Seite schließen oder das Handy sperren.</p><div class="progress" style="margin-top:12px;background:#ffffff2b"><span style="width:${Math.round((rd/15)*100)}%;background:white"></span></div><button class="btn" disabled>Geschichten werden automatisch erstellt …</button></div>`:batchPaused?`<div class="bigstep"><div class="eyebrow">Produktion pausiert</div><h3>KI-Guthaben / Quota prüfen</h3><p>${esc(batchErr.message||'OpenAI hat die Produktion mit einem Quota-/Billing-Fehler gestoppt.')} Nach dem Aufladen einfach erneut starten; fertige Geschichten bleiben erhalten.</p><button class="btn" id="generateAll">Nach Guthaben weiterlaufen</button></div>`:`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>${fail||batchDoneErrors?'Fehlende Geschichten fortsetzen':'15 Geschichten erstellen'}</h3><p>Serverseitig und automatisch: fertige Geschichten werden übersprungen, fehlende nacheinander erzeugt. Handy darf gesperrt werden.</p><button class="btn" id="generateAll">${rd?`Ab ${rd+1}/15 automatisch weiter`:'Alle 15 automatisch erzeugen'}</button></div>`):''}
-  ${rd===15?`<div class="okbox"><b>15/15 Geschichten fertig ✓</b><br>Du musst die Texte nicht alle lesen. Öffne Details nur bei Bedarf.</div><button class="btn" id="toChars">Weiter zu Figuren</button>`:''}
+  ${!planned&&rd<15?(batchRunning?`<div class="bigstep"><div class="eyebrow">Ein Gesamtauftrag läuft</div><h3>${rd}/15 Geschichten fertig</h3><p>${activePositions?.length?'Parallel aktiv: '+activePositions.join(', ')+'. ':batchPos?'Aktuell Geschichte '+batchPos+'. ':''}Bis zu drei Geschichten werden kontrolliert gleichzeitig erstellt. Danach folgen Qualität, Figuren, Bilder und Review-PDF automatisch.</p><div class="progress" style="margin-top:12px;background:#ffffff2b"><span style="width:${Math.round((rd/15)*100)}%;background:white"></span></div><button class="btn" disabled>Gesamtauftrag läuft …</button></div>`:batchPaused?`<div class="bigstep"><div class="eyebrow">Produktion pausiert</div><h3>KI-Guthaben / Quota prüfen</h3><p>${esc(batchErr.message||'OpenAI hat die Produktion mit einem Quota-/Billing-Fehler gestoppt.')} Fertige Inhalte bleiben erhalten.</p><button class="btn" id="resumeMaster">Gesamtauftrag weiterführen</button></div>`:`<div class="bigstep"><div class="eyebrow">Nächster Schritt</div><h3>${fail||needsReview||batchDoneErrors?'Gesamtauftrag fortsetzen':'Buchproduktion starten'}</h3><p>Ein Auftrag erledigt alle fehlenden Schritte. Bereits fertige Inhalte werden übersprungen; nur Fehler werden gezielt repariert.</p><button class="btn" id="resumeMaster">${rd?'Ab aktuellem Stand weiter':'Gesamtauftrag starten'}</button></div>`):''}
+  ${rd===15?`<div class="okbox"><b>15/15 Geschichten fertig ✓</b><br>Jetzt läuft die Qualitätsprüfung. Danach folgen Figuren und Bilder automatisch.</div>${fullJob?.status==='running'?'<button class="btn" disabled>Qualität wird geprüft …</button>':'<button class="btn" id="resumeMaster">Gesamtauftrag fortsetzen</button>'}`:''}
   ${problemItems.length?`<div class="section-title">Nur Probleme</div>${problemItems.map(s=>`<div class="story-quick"><div class="row"><div><div class="story-title">${String(s.position).padStart(2,'0')} · ${esc(s.title)}</div><div class="desc">${esc(s.generation_error?.provider?.error||s.generation_error?.message||'Prüfung erforderlich')}</div></div><span class="pill red">${esc(statusLabel(s.status))}</span></div><button class="btn secondary" data-openstory="${s.id}">Problem öffnen</button></div>`).join('')}`:''}
   <details class="overview-card" ${ideaMode&&planned?'open':''}><summary><div class="row"><div><b>${ideaMode?'15 Story-Ideen':'Alle 15 Geschichten'}</b><div class="desc">Nur öffnen, wenn du einzelne Inhalte ansehen oder ändern möchtest.</div></div><span class="chev">⌄</span></div></summary><div class="inside" id="quickStories">${S.stories.map(s=>{const p=s.plan_item||{},failedGen=s.status==='failed'&&s.approved_at;return `<div class="story-quick"><div class="row"><div style="display:flex;gap:8px;align-items:flex-start;flex:1"><div class="num">${String(s.position).padStart(2,'0')}</div><div><div class="story-title">${esc(s.title)}</div><div class="desc">${esc(p.primary_setting||'—')} · ${esc(p.central_problem||p.hook||'')}</div></div></div><span class="pill ${pillClass(s.status)}">${failedGen?'KI-Fehler':esc(statusLabel(s.status))}</span></div><div class="actions">${s.status==='planned'?`<button class="mini-btn ok" data-oneapprove="${s.position}">Freigeben</button>`:failedGen?`<button class="mini-btn ok" data-retry="${s.id}">Erneut</button>`:`<span></span>`}<button class="mini-btn" data-openstory="${s.id}">Details</button></div></div>`}).join('')}</div></details>`;
   if($('#approveAll'))$('#approveAll').onclick=approveAllPlanned;
   if($('#generateAll'))$('#generateAll').onclick=generateAllStories;
-  if($('#toChars'))$('#toChars').onclick=async()=>{await updateProductionStage(S.request.id,'characters');go('characters',{id:S.request.id})};
+  if($('#resumeMaster'))$('#resumeMaster').onclick=e=>prepareRealOrder(e.currentTarget);
   document.querySelectorAll('[data-oneapprove]').forEach(b=>b.onclick=()=>approveOneQuick(Number(b.dataset.oneapprove),b));
   document.querySelectorAll('[data-openstory]').forEach(b=>b.onclick=()=>go('story',{id:b.dataset.openstory,request:S.request.id}));
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>{const st=S.stories.find(x=>x.id===b.dataset.retry);if(st)generateStory(st,b)});
@@ -568,6 +573,11 @@ async function loadStoryBatchStatus(requestId=S.request?.id){
   try{S.storyBatch=await invoke('story4kids-story-batch',{action:'status',request_id:requestId});return S.storyBatch}
   catch(e){S.storyBatch={error:e.message,job:null,stats:null};return S.storyBatch}
 }
+async function loadFullPipelineStatus(requestId=S.request?.id){
+  if(!requestId){S.fullPipeline=null;return null}
+  try{S.fullPipeline=await invoke('story4kids-full-pipeline',{action:'status',request_id:requestId});return S.fullPipeline}
+  catch(e){S.fullPipeline={error:e.message,job:null,progress:null};return S.fullPipeline}
+}
 function stopStoryBatchPolling(){if(window._storyBatchTimer){clearTimeout(window._storyBatchTimer);window._storyBatchTimer=null}}
 function startStoryBatchPolling(requestId){
   stopStoryBatchPolling();
@@ -575,10 +585,10 @@ function startStoryBatchPolling(requestId){
     const activeRoute=route();
     if(!['production','request'].includes(activeRoute)||!S.request||S.request.id!==requestId){stopStoryBatchPolling();return}
     try{
-      await Promise.all([loadStories(),loadStoryBatchStatus(requestId)]);
-      if(S.storyBatch?.stats?.ready===15){await loadRequest(requestId);toast('15/15 Geschichten sind fertig.','ok')}
+      await Promise.all([loadStories(),loadStoryBatchStatus(requestId),loadFullPipelineStatus(requestId)]);
+      if((S.storyBatch?.stats?.ready===15||S.fullPipeline?.progress?.ready===15)&&S.request?.production_stage==='story_generation'){await loadRequest(requestId)}
       if(activeRoute==='production')productionView();else requestView();
-      if(S.storyBatch?.job?.status==='running')window._storyBatchTimer=setTimeout(tick,12000);
+      if(S.storyBatch?.job?.status==='running'||S.fullPipeline?.job?.status==='running')window._storyBatchTimer=setTimeout(tick,12000);
     }catch(e){window._storyBatchTimer=setTimeout(tick,15000)}
   };
   window._storyBatchTimer=setTimeout(tick,4000);
@@ -1141,7 +1151,7 @@ async function settingsView(){
   $('#openCredits').onclick=()=>window.open(budget?.links?.credit_grants||'https://platform.openai.com/settings/organization/billing/credit-grants','_blank');
   $('#openUsage').onclick=()=>window.open(budget?.links?.usage_dashboard||'https://platform.openai.com/usage','_blank');
   if($('#openAdminKeys'))$('#openAdminKeys').onclick=()=>window.open(budget?.links?.admin_keys||'https://platform.openai.com/settings/organization/admin-keys','_blank');
-  $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=5','_blank');
+  $('#settingsForm').onclick=()=>window.open('https://yasarkilic-wq.github.io/formular.html?v=6','_blank');
   if($('#changePass'))$('#changePass').onclick=async e=>{const a=$('#newPass').value,b=$('#newPass2').value;if(a.length<10)return toast('Bitte mindestens 10 Zeichen.','err');if(a!==b)return toast('Passwörter stimmen nicht überein.','err');try{busy(e.currentTarget,true);await changePassword(a);$('#newPass').value='';$('#newPass2').value='';toast('Passwort geändert.','ok')}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
 }
 function statusLine(name,ok){return `<div class="statusline"><b>${esc(name)}</b><span class="${ok?'yes':'no'}">${ok?'✓ bereit':'✕ fehlt'}</span></div>`}
@@ -1155,11 +1165,11 @@ async function render(){
     if(r==='dashboard')return dashboardView();
     if(r==='print')return printView();
     if(r==='settings')return settingsView();
-    if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);else await loadStories();await loadStoryBatchStatus(S.request?.id);const v=requestView();if(S.storyBatch?.job?.status==='running')startStoryBatchPolling(S.request.id);return v}
+    if(r==='request'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);else await loadStories();await Promise.all([loadStoryBatchStatus(S.request?.id),loadFullPipelineStatus(S.request?.id)]);const v=requestView();if(S.storyBatch?.job?.status==='running'||S.fullPipeline?.job?.status==='running')startStoryBatchPolling(S.request.id);return v}
     if(r==='illustrations'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return illustrationsView()}
     if(r==='book'){const id=query().get('id');if(!S.request||S.request.id!==id)await loadRequest(id);return bookView()}
     if(!S.request&&S.requests.length)await loadRequest(S.requests[0].id);
-    if(r==='production'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();await loadStoryBatchStatus(S.request?.id);const v=productionView();if(S.storyBatch?.job?.status==='running')startStoryBatchPolling(S.request.id);return v}
+    if(r==='production'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();await Promise.all([loadStoryBatchStatus(S.request?.id),loadFullPipelineStatus(S.request?.id)]);const v=productionView();if(S.storyBatch?.job?.status==='running'||S.fullPipeline?.job?.status==='running')startStoryBatchPolling(S.request.id);return v}
     if(r==='story'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return storyView()}
     if(r==='characters'){const rid=query().get('id');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadCharacters();return charactersView()}
     if(r==='scenes'){const rid=query().get('request');if(rid&&(!S.request||S.request.id!==rid))await loadRequest(rid);else await loadStories();return scenesView()}

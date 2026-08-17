@@ -676,7 +676,7 @@ function replaceStorySheet(s){
   <label>Optionaler Wunsch</label><textarea id="replaceHint" placeholder="z. B. lieber Wald, mehr Humor, mehr Flocki"></textarea>
   <button class="btn" id="doReplace">Neue Idee erzeugen</button>`;
   modal.classList.add('open');
-  $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('story4kids-private-ai',{action:'replace_plan',request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
+  $('#doReplace').onclick=async e=>{const b=e.currentTarget;try{busy(b,true,'Neue Idee …');await invoke('replace-request-story-item',{request_id:S.request.id,position:s.position,hint:$('#replaceHint').value.trim()});await loadStories();closeModal();toast('Neue Story-Idee ist da.','ok');await storyView()}catch(err){toast(err.message,'err')}finally{busy(b,false)}}
 }
 async function generateStory(s,btn=null){
   if(readinessNeedsRefresh())await loadReadiness();
@@ -716,7 +716,7 @@ async function charactersView(){
   if($('#approveAllChars'))$('#approveAllChars').onclick=approveAllCharacters;
   await renderCharacters();
 }
-async function generateAllCharacters(){const b=$('#generateAllChars');if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}const items=S.characters.filter(x=>x.status==='draft');let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} Referenz …`;try{await invoke('story4kids-private-ai',{action:'character_reference',request_id:S.request.id,character_id:items[i].id,regenerate:false})}catch(e){errors++}}await loadCharacters();toast(errors?`${errors} Referenzen mit Fehler.`:'Referenzen erzeugt.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
+async function generateAllCharacters(){const b=$('#generateAllChars');if(!S.readiness)await loadReadiness();if(!S.readiness?.ai_production_ready){toast('KI noch nicht bereit: OpenAI API-Key fehlt.','err');return}const items=S.characters.filter(x=>x.status==='draft');let errors=0;try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`<span class="spinner"></span>${i+1}/${items.length} Referenz …`;try{await invoke('generate-character-reference',{character_id:items[i].id,regenerate:false})}catch(e){errors++}}await loadCharacters();toast(errors?`${errors} Referenzen mit Fehler.`:'Referenzen erzeugt.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function approveAllCharacters(){const b=$('#approveAllChars'),items=S.characters.filter(x=>x.status==='reference_ready');try{busy(b,true);for(let i=0;i<items.length;i++){b.innerHTML=`${i+1}/${items.length} freigeben …`;await invoke('manage-character-bible',{character_id:items[i].id,action:'approve'})}await loadCharacters();if(S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast('Alle Figuren freigegeben.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}}
 async function renderCharacters(){
   const box=$('#characterList');if(!box)return;
@@ -741,7 +741,7 @@ async function renderCharacters(){
   document.querySelectorAll('[data-reopen]').forEach(b=>b.onclick=()=>manageCharacter(b.dataset.reopen,'reopen',b));
 }
 async function generateCharacter(id,regenerate,b){
-  try{busy(b,true,'Bild wird erzeugt …');await invoke('story4kids-private-ai',{action:'character_reference',request_id:S.request.id,character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+  try{busy(b,true,'Bild wird erzeugt …');await invoke('generate-character-reference',{character_id:id,regenerate});await loadCharacters();toast('Referenzbild erzeugt.','ok');await charactersView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function manageCharacter(id,action,b){
   try{busy(b,true);await invoke('manage-character-bible',{character_id:id,action});await loadCharacters();if(action==='approve'&&S.characters.length&&S.characters.every(x=>x.status==='approved'))await updateProductionStage(S.request.id,'illustrations');toast(action==='approve'?'Referenz freigegeben.':'Referenz wieder geöffnet.','ok');await charactersView()}catch(e){toast(e.message,'err')}finally{busy(b,false)}
@@ -1094,7 +1094,7 @@ async function renderScenes(story,scenes){
   document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>selectVariant(b.dataset.select,b));
 }
 async function generateVariants(sceneId,regenerate,b){
-  try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('story4kids-private-ai',{action:'scene_variants',request_id:S.request.id,scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
+  try{busy(b,true,'3 Bilder werden erzeugt …');await invoke('generate-story-image-variants',{scene_id:sceneId,variant_count:3,regenerate});toast('Bildvarianten sind da.','ok');await scenesView()}catch(e){toast((e.data?.next_action?e.message+' · '+e.data.next_action:e.message),'err')}finally{busy(b,false)}
 }
 async function selectVariant(id,b){
   try{

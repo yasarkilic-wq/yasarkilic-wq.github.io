@@ -108,7 +108,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
 
 <div class="form-intro">
   <b>4 kurze Schritte · etwa 5 Minuten</b>
-  <span>Nur Name, E-Mail, Kind, Alter und mindestens ein Interesse sind nötig. Alles Weitere ist optional, verbessert aber die Personalisierung.</span>
+  <span>Name, E-Mail, Kind, Alter, mindestens ein Interesse sowie Haare und Augen sind erforderlich. Diese Angaben halten die Figur über alle Bilder hinweg einheitlich.</span>
 </div>
 
 <section class="section">
@@ -227,9 +227,34 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
 <section class="section">
   <div class="section-head"><div class="kicker">4 von 4 · Aussehen & Zustimmung</div><h2>Einheitliche Figuren</h2><p>Diese wenigen Merkmale helfen, dass das Kind auf allen Seiten möglichst gleich aussieht.</p></div>
   <div class="body">
-    <div class="grid2">
-      <div class="field"><label>Haare <span class="help">Empfohlen.</span></label><input name="child_hair" placeholder="z. B. braun, lockig"></div>
-      <div class="field"><label>Augen <span class="help">Empfohlen.</span></label><input name="child_eyes" placeholder="z. B. grün"></div>
+    <div class="field"><label>Haarfarbe <span class="req">*</span><span class="help">Bitte die ähnlichste Farbe wählen.</span></label>
+      <div class="checkgrid">
+        <div class="radioitem"><input type="radio" id="hair_blond" name="child_hair_color" value="blond" required><label for="hair_blond">blond</label></div>
+        <div class="radioitem"><input type="radio" id="hair_lightbrown" name="child_hair_color" value="hellbraun"><label for="hair_lightbrown">hellbraun</label></div>
+        <div class="radioitem"><input type="radio" id="hair_brown" name="child_hair_color" value="braun"><label for="hair_brown">braun</label></div>
+        <div class="radioitem"><input type="radio" id="hair_dark" name="child_hair_color" value="dunkelbraun bis schwarz"><label for="hair_dark">dunkelbraun / schwarz</label></div>
+        <div class="radioitem"><input type="radio" id="hair_red" name="child_hair_color" value="rot"><label for="hair_red">rot</label></div>
+        <div class="radioitem"><input type="radio" id="hair_other" name="child_hair_color" value="andere Haarfarbe"><label for="hair_other">andere Farbe</label></div>
+      </div>
+    </div>
+    <div class="field"><label>Haarstruktur <span class="req">*</span></label>
+      <div class="checkgrid">
+        <div class="radioitem"><input type="radio" id="hair_straight" name="child_hair_texture" value="glatt" required><label for="hair_straight">glatt</label></div>
+        <div class="radioitem"><input type="radio" id="hair_wavy" name="child_hair_texture" value="wellig"><label for="hair_wavy">wellig</label></div>
+        <div class="radioitem"><input type="radio" id="hair_curly" name="child_hair_texture" value="lockig"><label for="hair_curly">lockig</label></div>
+        <div class="radioitem"><input type="radio" id="hair_coily" name="child_hair_texture" value="kraus"><label for="hair_coily">kraus</label></div>
+        <div class="radioitem"><input type="radio" id="hair_short" name="child_hair_texture" value="sehr kurz oder keine Haare"><label for="hair_short">sehr kurz / keine</label></div>
+      </div>
+    </div>
+    <div class="field"><label>Augenfarbe <span class="req">*</span><span class="help">Bitte die ähnlichste Farbe wählen.</span></label>
+      <div class="checkgrid">
+        <div class="radioitem"><input type="radio" id="eyes_blue" name="child_eyes" value="blau" required><label for="eyes_blue">blau</label></div>
+        <div class="radioitem"><input type="radio" id="eyes_green" name="child_eyes" value="grün"><label for="eyes_green">grün</label></div>
+        <div class="radioitem"><input type="radio" id="eyes_gray" name="child_eyes" value="grau"><label for="eyes_gray">grau</label></div>
+        <div class="radioitem"><input type="radio" id="eyes_brown" name="child_eyes" value="braun"><label for="eyes_brown">braun</label></div>
+        <div class="radioitem"><input type="radio" id="eyes_dark" name="child_eyes" value="sehr dunkel"><label for="eyes_dark">sehr dunkel</label></div>
+        <div class="radioitem"><input type="radio" id="eyes_other" name="child_eyes" value="verschieden oder andere Augenfarbe"><label for="eyes_other">verschieden / andere</label></div>
+      </div>
     </div>
     <div class="grid2">
       <div class="field"><label>Besondere Merkmale</label><input name="child_features" placeholder="z. B. Brille, Sommersprossen"></div>
@@ -255,7 +280,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
     <div class="field hidden-hp"><label>Website</label><input name="website" autocomplete="off" tabindex="-1"></div>
     <input type="hidden" name="language" value="de-AT">
     <input type="hidden" name="length_preset" value="medium">
-    <input type="hidden" name="privacy_version" value="story4kids-v3.0-streamlined-2026-08">
+    <input type="hidden" name="privacy_version" value="story4kids-v3.1-required-appearance-2026-08">
     <div class="info" style="margin-top:16px"><strong>Datenschutzmodus:</strong> E-Mail und Telefon bleiben bei Story4Kids. Namen, Orte und persönliche Bezeichnungen werden vor KI-Aufrufen durch neutrale Platzhalter ersetzt und danach intern wieder eingesetzt.</div>
     <div class="field" style="margin-top:16px">
       <label class="consent"><input type="checkbox" name="privacy_accepted" required><span>Ich darf diese Angaben für das personalisierte Kinderbuch übermitteln und habe die Datenschutzhinweise gelesen. <span class="req">*</span></span></label>
@@ -285,7 +310,7 @@ function vals(name) {
   return [...document.querySelectorAll(`[name="${name}"]:checked`)].map(x => x.value);
 }
 function val(name) {
-  const el = document.querySelector(`[name="${name}"]`);
+  const el = document.querySelector(`[name="${name}"]:checked`) || document.querySelector(`[name="${name}"]`);
   return el ? el.value.trim() : "";
 }
 function splitPlaces(text) {
@@ -303,6 +328,16 @@ form.addEventListener("submit", async (e) => {
 
   if (!interests.length) {
     statusEl.textContent = "Bitte gib mindestens ein Interesse oder Hobby an.";
+    statusEl.className = "err";
+    statusEl.style.display = "block";
+    statusEl.scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
+  const hairColor = val("child_hair_color");
+  const hairTexture = val("child_hair_texture");
+  const eyeColor = val("child_eyes");
+  if (!hairColor || !hairTexture || !eyeColor) {
+    statusEl.textContent = "Bitte wähle Haarfarbe, Haarstruktur und Augenfarbe aus.";
     statusEl.className = "err";
     statusEl.style.display = "block";
     statusEl.scrollIntoView({behavior:"smooth", block:"center"});
@@ -330,8 +365,8 @@ form.addEventListener("submit", async (e) => {
     special_memory: val("special_memory"),
     important_people: val("important_people"),
     family_in_story: val("family_in_story"),
-    child_hair: val("child_hair"),
-    child_eyes: val("child_eyes"),
+    child_hair: hairColor + ", " + hairTexture,
+    child_eyes: eyeColor,
     child_features: val("child_features"),
     child_clothing: val("child_clothing"),
     important_people_appearance: val("important_people_appearance"),
@@ -353,7 +388,7 @@ form.addEventListener("submit", async (e) => {
     visual_style: "",
     language: "de-AT",
     length_preset: "medium",
-    privacy_version: "story4kids-v3.0-streamlined-2026-08",
+    privacy_version: "story4kids-v3.1-required-appearance-2026-08",
     privacy_accepted: document.querySelector('[name="privacy_accepted"]').checked,
     ai_processing_accepted: document.querySelector('[name="ai_processing_accepted"]').checked,
     website: val("website")

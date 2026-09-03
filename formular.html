@@ -65,6 +65,7 @@ textarea{min-height:94px;resize:vertical}
 .stylecard small{display:block;color:var(--muted);line-height:1.35}
 .form-intro{display:flex;flex-direction:column;gap:4px;padding:14px 15px;margin:0 0 16px;border-radius:16px;background:#eef5fa;border:1px solid #d7e5ef;color:var(--navy)}
 .form-intro b{font-size:14px}.form-intro span{font-size:12px;line-height:1.45;color:#4c6374}
+.stepper{position:sticky;top:0;z-index:20;background:#fffdf8ee;backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;padding:11px 12px;margin:0 0 14px;box-shadow:0 6px 18px #273b4c10}.stepper-top{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:800;color:var(--navy)}.stepbar{height:7px;background:#ece5da;border-radius:99px;overflow:hidden;margin-top:8px}.stepbar span{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--navy));transition:width .25s ease}.step-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:9px;margin:4px 0 18px}.step-actions button{margin:0}.step-actions .back{background:#fff;color:var(--navy);border:1px solid var(--navy);box-shadow:none}.step-actions.one{grid-template-columns:1fr}.form-step[hidden]{display:none}.draft-state{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:11px;color:var(--muted);margin:-6px 0 14px}.draft-state button{width:auto;padding:5px 8px;border-radius:8px;background:#eef2f5;color:var(--navy);box-shadow:none;font-size:10px}.draft-state.saved{color:var(--ok);border-color:#cfe4db;background:#f5fbf8}
 .optional{border:1px solid var(--line);border-radius:14px;background:#fbfaf8;margin-top:8px;overflow:hidden}
 .optional summary{cursor:pointer;padding:13px 14px;font-size:13px;font-weight:780;color:var(--navy);list-style:none}
 .optional summary::-webkit-details-marker{display:none}.optional summary:after{content:"＋";float:right;color:var(--muted)}
@@ -110,8 +111,10 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
   <b>4 kurze Schritte · etwa 5 Minuten</b>
   <span>Name, E-Mail, Kind, Alter, mindestens ein Interesse sowie Haare und Augen sind erforderlich. Diese Angaben halten die Figur über alle Bilder hinweg einheitlich.</span>
 </div>
+<div class="draft-state" id="draftState"><span>Deine Eingaben werden 24 Stunden nur auf diesem Gerät zwischengespeichert.</span><button type="button" id="clearDraft">Entwurf löschen</button></div>
+<div class="stepper" id="stepper" aria-live="polite"><div class="stepper-top"><span id="stepLabel">Schritt 1 von 4</span><span id="stepTitle">Du und dein Kind</span></div><div class="stepbar"><span id="stepProgress" style="width:25%"></span></div></div>
 
-<section class="section">
+<section class="section form-step" data-step-title="Du und dein Kind">
   <div class="section-head"><div class="kicker">1 von 4 · Grunddaten</div><h2>Du und dein Kind</h2><p>Kontaktdaten bleiben bei Story4Kids und werden nicht für Geschichten verwendet.</p></div>
   <div class="body">
     <div class="grid2">
@@ -134,7 +137,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
   </div>
 </section>
 
-<section class="section">
+<section class="section form-step" data-step-title="Persönlichkeit">
   <div class="section-head"><div class="kicker">2 von 4 · Persönlichkeit</div><h2>Was liebt dein Kind?</h2><p>Ein bis drei gute Hinweise sind wertvoller als ein lang ausgefüllter Fragebogen.</p></div>
   <div class="body">
     <div class="field"><label>Interessen & Hobbys <span class="req">*</span></label>
@@ -185,7 +188,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
   </div>
 </section>
 
-<section class="section">
+<section class="section form-step" data-step-title="Geschichten">
   <div class="section-head"><div class="kicker">3 von 4 · Geschichten</div><h2>Wünsche und Grenzen</h2><p>Wir sorgen automatisch für 15 abwechslungsreiche, altersgerechte Geschichten.</p></div>
   <div class="body">
     <div class="field"><label>Welche Stimmung passt?</label>
@@ -224,7 +227,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
   </div>
 </section>
 
-<section class="section">
+<section class="section form-step" data-step-title="Aussehen & Zustimmung">
   <div class="section-head"><div class="kicker">4 von 4 · Aussehen & Zustimmung</div><h2>Einheitliche Figuren</h2><p>Diese wenigen Merkmale helfen, dass das Kind auf allen Seiten möglichst gleich aussieht.</p></div>
   <div class="body">
     <div class="field"><label>Haarfarbe <span class="req">*</span><span class="help">Bitte die ähnlichste Farbe wählen.</span></label>
@@ -316,6 +319,101 @@ function val(name) {
 function splitPlaces(text) {
   return text.split(/[,;\n]/).map(x => x.trim()).filter(Boolean).slice(0,8);
 }
+
+const DRAFT_KEY = "story4kids-form-draft-v1";
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const draftState = document.getElementById("draftState");
+const clearDraftBtn = document.getElementById("clearDraft");
+const formSteps = [...form.querySelectorAll(".form-step")];
+const stepLabel = document.getElementById("stepLabel");
+const stepTitle = document.getElementById("stepTitle");
+const stepProgress = document.getElementById("stepProgress");
+const stepper = document.getElementById("stepper");
+const stepActions = document.createElement("div");
+stepActions.className = "step-actions";
+let currentStep = 0;
+let saveTimer = null;
+
+function draftValues() {
+  const excluded = new Set(["website", "privacy_accepted", "ai_processing_accepted"]);
+  const values = {};
+  for (const element of form.elements) {
+    if (!element.name || excluded.has(element.name) || element.disabled) continue;
+    if (element.type === "checkbox" || element.type === "radio") {
+      if (!element.checked) continue;
+      (values[element.name] ||= []).push(element.value);
+    } else values[element.name] = element.value;
+  }
+  return values;
+}
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ expires_at: Date.now() + DRAFT_TTL_MS, current_step: currentStep, values: draftValues() }));
+    draftState.classList.add("saved");
+    draftState.querySelector("span").textContent = "Entwurf auf diesem Gerät gespeichert · verfällt nach 24 Stunden.";
+  } catch {}
+}
+function scheduleDraftSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 350);
+}
+function removeDraft(showMessage = true) {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  if (showMessage) {
+    draftState.classList.remove("saved");
+    draftState.querySelector("span").textContent = "Lokaler Entwurf gelöscht. Neue Eingaben werden wieder 24 Stunden gespeichert.";
+  }
+}
+function restoreDraft() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    if (!saved || Number(saved.expires_at) <= Date.now()) { removeDraft(false); return; }
+    const values = saved.values || {};
+    for (const element of form.elements) {
+      if (!element.name || !(element.name in values)) continue;
+      const savedValue = values[element.name];
+      if (element.type === "checkbox" || element.type === "radio") element.checked = Array.isArray(savedValue) && savedValue.includes(element.value);
+      else element.value = String(savedValue ?? "");
+    }
+    currentStep = Math.min(formSteps.length - 1, Math.max(0, Number(saved.current_step) || 0));
+    draftState.classList.add("saved");
+    draftState.querySelector("span").textContent = "Entwurf von diesem Gerät wiederhergestellt · noch höchstens 24 Stunden gespeichert.";
+  } catch { removeDraft(false); }
+}
+function validateStep(index) {
+  const step = formSteps[index];
+  if (index === 1 && !vals("interests").length && !val("interests_other")) {
+    const otherInterests = document.querySelector('[name="interests_other"]');
+    otherInterests.setCustomValidity("Bitte wähle mindestens ein Interesse oder trage hier ein anderes ein.");
+    otherInterests.reportValidity();
+    otherInterests.focus();
+    return false;
+  }
+  document.querySelector('[name="interests_other"]').setCustomValidity("");
+  const invalid = [...step.querySelectorAll("input,select,textarea")].find(element => !element.checkValidity());
+  if (invalid) { invalid.reportValidity(); invalid.focus({ preventScroll: false }); return false; }
+  statusEl.style.display = "none";
+  return true;
+}
+function showStep(index, scroll = true) {
+  currentStep = Math.min(formSteps.length - 1, Math.max(0, index));
+  formSteps.forEach((step, position) => { step.hidden = position !== currentStep; });
+  stepLabel.textContent = `Schritt ${currentStep + 1} von ${formSteps.length}`;
+  stepTitle.textContent = formSteps[currentStep].dataset.stepTitle || "";
+  stepProgress.style.width = `${((currentStep + 1) / formSteps.length) * 100}%`;
+  stepActions.className = `step-actions${currentStep === 0 || currentStep === formSteps.length - 1 ? " one" : ""}`;
+  stepActions.innerHTML = `${currentStep > 0 ? '<button type="button" class="back" id="stepBack">Zurück</button>' : ""}${currentStep < formSteps.length - 1 ? '<button type="button" id="stepNext">Weiter</button>' : ""}`;
+  formSteps[currentStep].insertAdjacentElement("afterend", stepActions);
+  document.getElementById("stepBack")?.addEventListener("click", () => { showStep(currentStep - 1); scheduleDraftSave(); });
+  document.getElementById("stepNext")?.addEventListener("click", () => { if (validateStep(currentStep)) { showStep(currentStep + 1); scheduleDraftSave(); } });
+  if (scroll) stepper.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+restoreDraft();
+showStep(currentStep, false);
+form.addEventListener("input", scheduleDraftSave);
+form.addEventListener("change", scheduleDraftSave);
+clearDraftBtn.addEventListener("click", () => { if (!confirm("Den auf diesem Gerät gespeicherten Entwurf löschen?")) return; removeDraft(); form.reset(); document.getElementById("styleLegacy").checked = true; showStep(0); });
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -411,6 +509,7 @@ form.addEventListener("submit", async (e) => {
     statusEl.innerHTML = "<strong>Danke!</strong> Deine Angaben wurden erfolgreich an Story4Kids übermittelt. Wir prüfen den Auftrag jetzt intern.";
     statusEl.className = "ok";
     statusEl.style.display = "block";
+    removeDraft(false);
     form.reset();
     document.getElementById("styleLegacy").checked = true;
     statusEl.scrollIntoView({behavior:"smooth", block:"center"});
@@ -420,6 +519,8 @@ form.addEventListener("submit", async (e) => {
       valid_email_required: "Bitte prüfe die E-Mail-Adresse.",
       child_first_name_required: "Bitte gib den Vornamen des Kindes an.",
       invalid_child_age: "Bitte wähle das Alter des Kindes.",
+      child_hair_required: "Bitte wähle Haarfarbe und Haarstruktur des Kindes.",
+      child_eyes_required: "Bitte wähle die Augenfarbe des Kindes.",
       interests_required: "Bitte gib mindestens ein Interesse oder Hobby an.",
       privacy_consent_required: "Bitte bestätige die Datenschutzzustimmung.",
       ai_processing_consent_required: "Bitte bestätige die KI-Verarbeitung im Datenschutzmodus.",

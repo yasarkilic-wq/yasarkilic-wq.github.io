@@ -266,8 +266,8 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
 
     <div class="field"><label>Bildstil</label>
       <div class="stylegrid">
-        <div class="stylecard"><input id="styleLegacy" type="radio" name="style_key" value="legacy_painterly_v1" checked><label for="styleLegacy"><b>Bisheriger Premium-Stil</b><small>Der bewährte warme Kinderbuchstil bleibt Standard.</small></label></div>
-        <div class="stylecard"><input id="style3d" type="radio" name="style_key" value="cinematic_3d_v1_test"><label for="style3d"><b>Cineastisches 3D · Test</b><small>Moderner 3D-Look mit warmer Beleuchtung und weichen Materialien.</small></label></div>
+        <div class="stylecard"><input id="style3d" type="radio" name="style_key" value="cinematic_3d_v2" checked><label for="style3d"><b>Modernes cineastisches 3D</b><small>Klare Figuren, kräftige Farben und hochwertiges Filmlicht – unser neuer Standard.</small></label></div>
+        <div class="stylecard"><input id="styleLegacy" type="radio" name="style_key" value="legacy_painterly_v1"><label for="styleLegacy"><b>Klassisch weich</b><small>Ruhiger, gemalter Kinderbuchstil als optionale Alternative.</small></label></div>
       </div>
     </div>
 
@@ -283,7 +283,7 @@ footer{padding:22px 18px 34px;color:#747b83;font-size:11px;line-height:1.5;text-
     <div class="field hidden-hp"><label>Website</label><input name="website" autocomplete="off" tabindex="-1"></div>
     <input type="hidden" name="language" value="de-AT">
     <input type="hidden" name="length_preset" value="medium">
-    <input type="hidden" name="privacy_version" value="story4kids-v3.1-required-appearance-2026-08">
+    <input type="hidden" name="privacy_version" value="story4kids-v3.2-modern-3d-default-2026-09">
     <div class="info" style="margin-top:16px"><strong>Datenschutzmodus:</strong> E-Mail und Telefon bleiben bei Story4Kids. Namen, Orte und persönliche Bezeichnungen werden vor KI-Aufrufen durch neutrale Platzhalter ersetzt und danach intern wieder eingesetzt.</div>
     <div class="field" style="margin-top:16px">
       <label class="consent"><input type="checkbox" name="privacy_accepted" required><span>Ich darf diese Angaben für das personalisierte Kinderbuch übermitteln und habe die Datenschutzhinweise gelesen. <span class="req">*</span></span></label>
@@ -413,7 +413,7 @@ restoreDraft();
 showStep(currentStep, false);
 form.addEventListener("input", scheduleDraftSave);
 form.addEventListener("change", scheduleDraftSave);
-clearDraftBtn.addEventListener("click", () => { if (!confirm("Den auf diesem Gerät gespeicherten Entwurf löschen?")) return; removeDraft(); form.reset(); document.getElementById("styleLegacy").checked = true; showStep(0); });
+clearDraftBtn.addEventListener("click", () => { if (!confirm("Den auf diesem Gerät gespeicherten Entwurf löschen?")) return; removeDraft(); form.reset(); document.getElementById("style3d").checked = true; showStep(0); });
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -482,11 +482,11 @@ form.addEventListener("submit", async (e) => {
     story_wishes: val("story_wishes"),
     occasion: val("occasion"),
     dedication: val("dedication"),
-    style_key: document.querySelector('[name="style_key"]:checked')?.value || "legacy_painterly_v1",
+    style_key: document.querySelector('[name="style_key"]:checked')?.value || "cinematic_3d_v2",
     visual_style: "",
     language: "de-AT",
     length_preset: "medium",
-    privacy_version: "story4kids-v3.1-required-appearance-2026-08",
+    privacy_version: "story4kids-v3.2-modern-3d-default-2026-09",
     privacy_accepted: document.querySelector('[name="privacy_accepted"]').checked,
     ai_processing_accepted: document.querySelector('[name="ai_processing_accepted"]').checked,
     website: val("website")
@@ -511,7 +511,7 @@ form.addEventListener("submit", async (e) => {
     statusEl.style.display = "block";
     removeDraft(false);
     form.reset();
-    document.getElementById("styleLegacy").checked = true;
+    document.getElementById("style3d").checked = true;
     statusEl.scrollIntoView({behavior:"smooth", block:"center"});
   } catch (err) {
     const messages = {

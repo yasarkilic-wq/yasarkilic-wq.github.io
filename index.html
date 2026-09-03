@@ -135,7 +135,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v7.1-2026-09-03-editorial-lulu-usage';
+const APP_VERSION='workflow-v7.2-2026-09-03-modern-3d-cover-art';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -1029,7 +1029,7 @@ async function bookViewLegacy(){
 
 function luluBlockerLabel(value){
   const key=String(value||'').split(':')[0];
-  return ({provider_not_selected:'Lulu noch nicht als Druckanbieter bestätigt',cover_visual_not_approved:'Umschlag noch nicht visuell freigegeben',final_visual_approval_required:'Innenteil und Umschlag noch nicht gemeinsam freigegeben',interior_layout_not_current:'Innenteil ist nicht die aktuelle Lulu-Fassung',cover_layout_not_current:'Umschlag ist nicht die aktuelle Lulu-Fassung',shipping_address_missing:'Lieferadresse für Österreich noch unvollständig',contact_email_missing:'Kontakt-E-Mail fehlt',lulu_interior_pdf_missing:'Lulu-Innenteil fehlt',lulu_cover_pdf_missing:'Lulu-Umschlag fehlt',lulu_interior_not_validated:'Innenteil noch nicht von Lulu validiert',lulu_cover_not_validated:'Umschlag noch nicht von Lulu validiert',page_count_mismatch:'Seitenzahl stimmt nicht überein',pod_package_not_verified:'Lulu-Produktcode noch nicht online bestätigt',interior_file_not_current:'Lulu-Job verweist auf ein altes Innenteil',cover_file_not_current:'Lulu-Job verweist auf einen alten Umschlag',visual_approval_does_not_match_files:'Freigabe gehört nicht zu den aktuellen Dateien'})[key]||String(value||'Prüfung offen');
+  return ({provider_not_selected:'Lulu noch nicht als Druckanbieter bestätigt',cover_visual_not_approved:'Umschlag noch nicht visuell freigegeben',final_visual_approval_required:'Innenteil und Umschlag noch nicht gemeinsam freigegeben',interior_layout_not_current:'Innenteil ist nicht die aktuelle Lulu-Fassung',cover_layout_not_current:'Umschlag ist nicht die aktuelle Lulu-Fassung',dedicated_cover_art_not_current:'Eigenes modernes Covermotiv fehlt oder wurde geändert',shipping_address_missing:'Lieferadresse für Österreich noch unvollständig',contact_email_missing:'Kontakt-E-Mail fehlt',lulu_interior_pdf_missing:'Lulu-Innenteil fehlt',lulu_cover_pdf_missing:'Lulu-Umschlag fehlt',lulu_interior_not_validated:'Innenteil noch nicht von Lulu validiert',lulu_cover_not_validated:'Umschlag noch nicht von Lulu validiert',page_count_mismatch:'Seitenzahl stimmt nicht überein',pod_package_not_verified:'Lulu-Produktcode noch nicht online bestätigt',interior_file_not_current:'Lulu-Job verweist auf ein altes Innenteil',cover_file_not_current:'Lulu-Job verweist auf einen alten Umschlag',visual_approval_does_not_match_files:'Freigabe gehört nicht zu den aktuellen Dateien'})[key]||String(value||'Prüfung offen');
 }
 
 async function bookView(){
@@ -1041,10 +1041,11 @@ async function bookView(){
   const selected=S.requestScenes.filter(x=>x.selected_variant_id).length;
   const imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length;
   const all=storyReady===15&&charOk&&imagesOk;
-  let reviewState=null,printState=null,coverState=null,luluHealth=null,luluJob=null,requestUsage=null;
+  let reviewState=null,printState=null,coverState=null,coverArtState=null,luluHealth=null,luluJob=null,requestUsage=null;
   try{reviewState=await invoke('story4kids-review-pdf',{action:'status',request_id:S.request.id})}catch(e){reviewState={error:e.message}}
   try{printState=await invoke('story4kids-print-pdf-v6',{action:'status',request_id:S.request.id})}catch(e){printState={error:e.message}}
   try{requestUsage=(await invoke('story4kids-ai-budget',{action:'request_status',request_id:S.request.id}))?.usage||null}catch{}
+  try{coverArtState=await invoke('story4kids-cover-art',{action:'status',request_id:S.request.id})}catch(e){coverArtState={error:e.message}}
   const reviewJob=reviewState?.job||null;
   const reviewPath=reviewState?.review_pdf_storage_path||S.request.review_pdf_storage_path||null;
   const reviewReady=!!reviewPath,approved=!!(reviewState?.book_approved_at||S.request.book_approved_at);
@@ -1055,10 +1056,11 @@ async function bookView(){
   if(printReady){try{coverState=await invoke('story4kids-cover-pdf-v2',{action:'status',request_id:S.request.id})}catch(e){coverState={error:e.message}}}
   const coverJob=coverState?.job||null,coverPath=coverState?.request?.cover_pdf_storage_path||S.request.cover_pdf_storage_path||null;
   const coverMeta=coverState?.request?.metadata?.cover_pdf||S.request.metadata?.cover_pdf||coverJob?.preflight||{};
-  const coverCurrent=coverMeta.layout_version==='cover-v8-lulu-editorial'&&Number(coverMeta.page_count)===156&&coverMeta.passed===true;
+  const coverArtVariants=Array.isArray(coverArtState?.variants)?coverArtState.variants:[],selectedCoverArt=coverArtVariants.find(x=>x.status==='selected')||null;
+  const coverCurrent=coverMeta.layout_version==='cover-v8-lulu-editorial'&&Number(coverMeta.page_count)===156&&coverMeta.passed===true&&coverMeta.hero_source==='dedicated_cover_art'&&coverMeta.cover_art_variant_id===selectedCoverArt?.id;
   const coverReady=printReady&&!!coverPath&&coverCurrent,coverRunning=coverJob?.status==='running',coverFailed=coverJob?.status==='failed';
   const approval=S.request.metadata?.final_visual_approval||{};
-  const visualApproved=approval.approved===true&&approval.interior_layout_version==='print-v8-lulu-editorial'&&approval.cover_layout_version==='cover-v8-lulu-editorial'&&Number(approval.page_count)===156;
+  const visualApproved=approval.approved===true&&approval.interior_layout_version==='print-v8-lulu-editorial'&&approval.cover_layout_version==='cover-v8-lulu-editorial'&&approval.cover_art_variant_id===selectedCoverArt?.id&&Number(approval.page_count)===156;
   if(printReady&&coverReady){
     try{luluHealth=await invoke('story4kids-lulu',{action:'health'})}catch(e){luluHealth={error:e.message}}
     try{luluJob=(await invoke('story4kids-lulu',{action:'status',request_id:S.request.id}))?.job||null}catch{}
@@ -1073,6 +1075,8 @@ async function bookView(){
   const usageText=requestUsage?.recorded_text_usage||{},usageImages=requestUsage?.image_usage||{},usageNf=new Intl.NumberFormat('de-AT');
   const recordedTokens=usageText.total_tokens==null?'nicht erfasst':usageNf.format(Number(usageText.total_tokens));
   const usageBlock=requestUsage?`<div class="section-title">Verbrauch dieses Auftrags</div><div class="summary-grid"><div class="summary-tile"><strong>${recordedTokens}</strong><span>gespeicherte Text-Tokens</span></div><div class="summary-tile"><strong>${usageNf.format(Number(usageImages.generated_variants||0))}</strong><span>erzeugte Bilddateien</span></div><div class="summary-tile"><strong>${usageNf.format(Number(usageImages.selected_images||0))}</strong><span>ausgewählte Buchbilder</span></div><div class="summary-tile"><strong>${usageNf.format(Number(usageText.failed||0))}</strong><span>fehlgeschlagene Text-Jobs</span></div></div><div class="inline-note">Interner Verbrauchszähler, keine Rechnung. „Nicht erfasst“ wird bewusst angezeigt, wenn ältere Jobs keine Tokenwerte gespeichert haben; Moderation, Qualitätsprüfungen, Wiederholungen und aktuelle Anbieterpreise können zusätzlich wirken.</div>`:'';
+  const coverArtCards=coverArtVariants.map(v=>`<div class="variant ${v.status==='selected'?'selected':''}"><div class="imagebox" id="cover-art-${v.id}"><div class="loading">Covermotiv wird geladen …</div></div><div class="small">Variante ${v.variant_index} · ${esc(v.style_key)}</div>${v.status==='selected'?'<div class="rule ok"><b>Ausgewählt ✓</b></div>':`<button class="btn secondary" data-select-cover-art="${v.id}">Als Cover wählen</button>`}</div>`).join('');
+  const coverArtPanel=`<div class="section-title">Eigenes Covermotiv</div><div class="card"><div class="row"><div><b>Separat erzeugtes Titelbild</b><div class="desc">Moderner cineastischer 3D-Stil · keine Innenszene · Titel und Logo werden erst im PDF gesetzt.</div></div><span class="pill ${selectedCoverArt?'ok':'warn'}">${selectedCoverArt?'GEWÄHLT':'OFFEN'}</span></div>${coverArtCards?`<div class="variants">${coverArtCards}</div>`:''}<button class="btn ${coverArtVariants.length?'secondary':''}" id="generateCoverArt">✨ ${coverArtVariants.length?'Weitere Covervariante erzeugen':'Neues Covermotiv erzeugen'}</button><div class="inline-note">Jeder Klick erzeugt genau ein kostenpflichtiges KI-Bild. Maximal zwölf Varianten pro Auftrag.</div></div>`;
   let content='';
   if(!reviewReady){
     if(reviewJob?.status==='running'){const done=Number(reviewJob.processed_stories||0),pct=Math.round(done/15*100);content=`<div class="book-preview"><div class="big">⚙️</div><b>Review-PDF wird erstellt</b><span>${done}/15 Geschichten verarbeitet. Das läuft serverseitig weiter.</span></div><div class="progress" style="margin-top:10px"><span style="width:${pct}%"></span></div>`}
@@ -1094,7 +1098,9 @@ async function bookView(){
       }else{
         const printWarnings=Array.isArray(printMeta.warnings)?printMeta.warnings:[];
         content+=`<div class="book-preview"><div class="big">📘</div><b>Innenteil bereit</b><span>156 Seiten · 8,5″ × 8,5″ · Fredoka + Nunito · ${esc(printMeta.illustrated_page_count||selected)} Bild-Text-Seiten</span></div><div class="actions"><button class="btn ok" id="openPrintPdf">📘 Öffnen</button><button class="btn secondary" id="startPrintPdf">Neu bauen</button></div>${printWarnings.length?`<div class="rule warn"><b>Druckhinweis.</b><br>Die Ausgangsbilder liegen teils unter den empfohlenen 300 ppi, aber über der internen Mindestgrenze von 200 ppi. Deshalb bleibt die Sichtkontrolle Pflicht.</div>`:''}`;
-        if(coverRunning)content+='<div class="nextbox"><h3>3 · Umschlag wird gebaut</h3><p>Vorderseite, Rücken, Rückseite und Barcode-Freifläche werden an 156 Seiten angepasst.</p><button class="btn" disabled>Umschlag wird erstellt …</button></div>';
+        content+=coverArtPanel;
+        if(!selectedCoverArt)content+='<div class="rule warn"><b>Umschlag wartet auf das Titelbild.</b><br>Erzeuge oben eine Variante und wähle sie aus.</div>';
+        else if(coverRunning)content+='<div class="nextbox"><h3>3 · Umschlag wird gebaut</h3><p>Vorderseite, Rücken, Rückseite und Barcode-Freifläche werden an 156 Seiten angepasst.</p><button class="btn" disabled>Umschlag wird erstellt …</button></div>';
         else if(!coverReady){
           if(coverFailed)content+=`<div class="rule red"><b>Umschlag-Erstellung gestoppt.</b><br>${esc(coverJob?.last_error?.message||'Unbekannter Fehler')}</div>`;
           content+=`<div class="nextbox"><h3>3 · Lulu-Umschlag erstellen</h3><p>Großes Titelbild, Story4Kids-Logo, lesbarer Rücken und sichere Beschnittzugabe.</p><button class="btn" id="startCoverPdf">${coverFailed?'Umschlag repariert neu starten':'Umschlag erstellen'}</button></div>`;
@@ -1115,6 +1121,9 @@ async function bookView(){
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
   if($('#startPrintPdf'))$('#startPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird gestartet …');await invoke('story4kids-print-pdf-v6',{action:'start',request_id:S.request.id,regenerate:true});toast('Neues Innenteil läuft serverseitig.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
   if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  coverArtVariants.forEach(v=>{if(!v.storage_path)return;privateImage(v.storage_path).then(url=>{const box=$('#cover-art-'+v.id);if(box&&url)box.innerHTML=`<img alt="Covervariante ${v.variant_index}" src="${url}">`}).catch(err=>{const box=$('#cover-art-'+v.id);if(box)box.innerHTML=`<div class="loading">${esc(err.message)}</div>`})});
+  if($('#generateCoverArt'))$('#generateCoverArt').onclick=async e=>{if(!confirm('Genau eine neue hochwertige Covervariante erzeugen? Dafür fallen Kosten beim KI-Bildanbieter an.'))return;try{busy(e.currentTarget,true,'Covermotiv wird erzeugt …');await invoke('story4kids-cover-art',{action:'generate',request_id:S.request.id,variant_count:1,style_key:'cinematic_3d_v2',confirm_generation:true});toast('Neue Covervariante ist fertig.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  document.querySelectorAll('[data-select-cover-art]').forEach(b=>b.onclick=async e=>{if(!confirm('Diese Variante als Titelbild wählen? Ein vorhandener Umschlag muss danach neu gebaut und erneut geprüft werden.'))return;try{busy(e.currentTarget,true,'Cover wird ausgewählt …');await invoke('story4kids-cover-art',{action:'select',request_id:S.request.id,variant_id:e.currentTarget.dataset.selectCoverArt});await loadRequest(S.request.id);toast('Covermotiv ausgewählt. Jetzt den Umschlag neu bauen.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}});
   if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf-v2',{action:'start',request_id:S.request.id,regenerate:true});toast('Neuer Umschlag läuft serverseitig.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
   if($('#openCoverPdf'))$('#openCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird geöffnet …');await openPrivatePdf(coverPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
   if($('#approveVisuals')){const btn=$('#approveVisuals'),checks=[...document.querySelectorAll('[data-visual-check]')];const sync=()=>btn.disabled=!checks.every(x=>x.checked);checks.forEach(x=>x.onchange=sync);btn.onclick=async e=>{if(!confirm('Innenteil und Umschlag als aktuelle Druckfassung freigeben? Dadurch wird noch nichts bestellt.'))return;try{busy(e.currentTarget,true,'Freigabe wird gespeichert …');await invoke('story4kids-lulu',{action:'approve_visuals',request_id:S.request.id,confirm:'APPROVE_FINAL_BOOK_VISUALS'});await loadRequest(S.request.id);toast('Finales Layout freigegeben. Keine Bestellung ausgelöst.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}}}

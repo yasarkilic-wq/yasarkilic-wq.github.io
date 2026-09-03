@@ -106,6 +106,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 .summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.summary-tile{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px}.summary-tile strong{display:block;font-size:19px;color:var(--navy)}.summary-tile span{font-size:10px;color:var(--muted)}
 .inline-note{font-size:10px;color:var(--muted);line-height:1.45;margin-top:8px}.backline{border:0;background:none;color:var(--navy);font-size:11px;font-weight:850;padding:4px 0 10px}.book-preview{border:1.5px dashed #cbbca7;background:#fffdf8;border-radius:19px;padding:22px 15px;text-align:center}.book-preview .big{font-size:31px;margin-bottom:6px}.book-preview b{display:block;color:var(--navy);margin-bottom:4px}.book-preview span{font-size:11px;color:var(--muted)}
 .issuebox{background:#fff7e8;border:1px solid #ead0a0;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.issuebox b{color:#85560d}.okbox{background:#edf8f3;border:1px solid #cce6db;border-radius:15px;padding:11px;margin-bottom:8px;font-size:11px}.okbox b{color:var(--ok)}
+.approval-list{display:grid;gap:7px;margin:10px 0}.approval-check{display:flex;align-items:flex-start;gap:9px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:10px;font-size:11px;line-height:1.4;color:var(--ink);margin:0}.approval-check input{width:18px;height:18px;flex:0 0 18px;margin:0;accent-color:var(--ok)}.specgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}.specgrid>div{background:#f5f7f8;border-radius:12px;padding:9px}.specgrid b{display:block;font-size:11px;color:var(--navy)}.specgrid span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
 
 @media(min-width:700px){.app{margin-top:18px;margin-bottom:18px;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden}.bottomnav{bottom:18px;border-radius:0 0 26px 26px}}
 #settingsBtn{display:none!important}
@@ -134,7 +135,7 @@ pre.storytext{white-space:pre-wrap;font-family:inherit;font-size:13px;line-heigh
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <script>
-const APP_VERSION='workflow-v6.0-2026-08-16-single-master';
+const APP_VERSION='workflow-v7.0-2026-09-03-editorial-lulu';
 const SB_URL='https://ctmtvaqryxgxbasaxbzw.supabase.co';
 const PUB_KEY='sb_publishable_mzqLZKyWB37huJrnEtjveg_2c27yz29';
 
@@ -936,17 +937,18 @@ async function startReviewPdf(btn){
   finally{if(document.body.contains(btn))busy(btn,false)}
 }
 async function approveReviewPdf(btn){
-  if(!confirm('Hast du alle Geschichten und Bilder in der Review-PDF geprüft? Nach der Freigabe startet das echte Buchlayout automatisch.'))return;
+  if(!confirm('Hast du alle Geschichten und Bilder in der Review-PDF geprüft? Danach startet das neue Kinderbuch-Layout automatisch.'))return;
   try{
     busy(btn,true,'Freigabe wird gespeichert …');
     await invoke('story4kids-review-pdf',{action:'approve',request_id:S.request.id});
+    await invoke('story4kids-print-pdf-v6',{action:'start',request_id:S.request.id,regenerate:true});
     await loadRequest(S.request.id);
-    toast('Review freigegeben. Das Drucklayout wird jetzt automatisch erstellt.','ok');
+    toast('Review freigegeben. Das neue Innenteil wird serverseitig erstellt.','ok');
     await bookView();
   }catch(e){toast(e.message,'err')}
   finally{if(document.body.contains(btn))busy(btn,false)}
 }
-async function bookView(){
+async function bookViewLegacy(){
   shell(true);activeNav('dashboard');$('#headerSub').textContent='Buchprüfung';if(!S.request)return;
   await loadRequestScenes();
   await loadQualityChecks();
@@ -1023,6 +1025,100 @@ async function bookView(){
   if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf-v2',{action:'start',request_id:S.request.id,regenerate:true});toast('Umschlag wird serverseitig neu erstellt.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
   if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
   if(running||printBuilding||coverBuilding||(reviewReady&&!approved&&qualityRequired&&!qualityReadyForApproval))setTimeout(async()=>{if(route()!=='book')return;try{await loadRequest(S.request.id);await bookView()}catch(e){}},4000);
+}
+
+function luluBlockerLabel(value){
+  const key=String(value||'').split(':')[0];
+  return ({provider_not_selected:'Lulu noch nicht als Druckanbieter bestätigt',cover_visual_not_approved:'Umschlag noch nicht visuell freigegeben',final_visual_approval_required:'Innenteil und Umschlag noch nicht gemeinsam freigegeben',interior_layout_not_current:'Innenteil ist nicht die aktuelle Lulu-Fassung',cover_layout_not_current:'Umschlag ist nicht die aktuelle Lulu-Fassung',shipping_address_missing:'Lieferadresse für Österreich noch unvollständig',contact_email_missing:'Kontakt-E-Mail fehlt',lulu_interior_pdf_missing:'Lulu-Innenteil fehlt',lulu_cover_pdf_missing:'Lulu-Umschlag fehlt',lulu_interior_not_validated:'Innenteil noch nicht von Lulu validiert',lulu_cover_not_validated:'Umschlag noch nicht von Lulu validiert',page_count_mismatch:'Seitenzahl stimmt nicht überein',pod_package_not_verified:'Lulu-Produktcode noch nicht online bestätigt',interior_file_not_current:'Lulu-Job verweist auf ein altes Innenteil',cover_file_not_current:'Lulu-Job verweist auf einen alten Umschlag',visual_approval_does_not_match_files:'Freigabe gehört nicht zu den aktuellen Dateien'})[key]||String(value||'Prüfung offen');
+}
+
+async function bookView(){
+  shell(true);activeNav('dashboard');$('#headerSub').textContent='Buch & Druck';if(!S.request)return;
+  await loadRequestScenes();await loadQualityChecks();
+  const storyReady=S.stories.filter(x=>x.status==='ready').length;
+  const charOk=S.characters.length>0&&S.characters.every(x=>x.status==='approved');
+  const prepared=new Set(S.requestScenes.map(x=>x.request_story_id)).size;
+  const selected=S.requestScenes.filter(x=>x.selected_variant_id).length;
+  const imagesOk=prepared===15&&S.requestScenes.length>0&&selected===S.requestScenes.length;
+  const all=storyReady===15&&charOk&&imagesOk;
+  let reviewState=null,printState=null,coverState=null,luluHealth=null,luluJob=null;
+  try{reviewState=await invoke('story4kids-review-pdf',{action:'status',request_id:S.request.id})}catch(e){reviewState={error:e.message}}
+  try{printState=await invoke('story4kids-print-pdf-v6',{action:'status',request_id:S.request.id})}catch(e){printState={error:e.message}}
+  const reviewJob=reviewState?.job||null;
+  const reviewPath=reviewState?.review_pdf_storage_path||S.request.review_pdf_storage_path||null;
+  const reviewReady=!!reviewPath,approved=!!(reviewState?.book_approved_at||S.request.book_approved_at);
+  const printJob=printState?.job||null,printMeta=S.request.metadata?.print_pdf||{},printPath=S.request.book_pdf_storage_path||null;
+  const printCurrent=printMeta.layout_version==='print-v8-lulu-editorial'&&Number(printMeta.page_count)===156&&printMeta.passed===true;
+  const printReady=!!printPath&&printCurrent,printRunning=printJob?.status==='running',printFailed=printJob?.status==='failed';
+  const printDone=Number(printJob?.processed_stories||0),printPct=Math.round((printDone/15)*100);
+  if(printReady){try{coverState=await invoke('story4kids-cover-pdf-v2',{action:'status',request_id:S.request.id})}catch(e){coverState={error:e.message}}}
+  const coverJob=coverState?.job||null,coverPath=coverState?.request?.cover_pdf_storage_path||S.request.cover_pdf_storage_path||null;
+  const coverMeta=coverState?.request?.metadata?.cover_pdf||S.request.metadata?.cover_pdf||coverJob?.preflight||{};
+  const coverCurrent=coverMeta.layout_version==='cover-v8-lulu-editorial'&&Number(coverMeta.page_count)===156&&coverMeta.passed===true;
+  const coverReady=printReady&&!!coverPath&&coverCurrent,coverRunning=coverJob?.status==='running',coverFailed=coverJob?.status==='failed';
+  const approval=S.request.metadata?.final_visual_approval||{};
+  const visualApproved=approval.approved===true&&approval.interior_layout_version==='print-v8-lulu-editorial'&&approval.cover_layout_version==='cover-v8-lulu-editorial'&&Number(approval.page_count)===156;
+  if(printReady&&coverReady){
+    try{luluHealth=await invoke('story4kids-lulu',{action:'health'})}catch(e){luluHealth={error:e.message}}
+    try{const rows=await rest('lulu_print_jobs?select=*&request_id=eq.'+encodeURIComponent(S.request.id)+'&order=created_at.desc&limit=1');luluJob=rows?.[0]||null}catch{}
+  }
+  const qualityRequired=S.request.metadata?.quality_required===true;
+  const qualityBlockers=S.qualityChecks.filter(x=>x.status==='failed'&&x.blocking);
+  const qHas=(stage,key,status='passed')=>S.qualityChecks.some(x=>x.stage===stage&&x.check_key===key&&x.status===status);
+  const wordChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='word_count'&&x.status==='passed').length;
+  const testQualityMode=S.request.metadata?.pipeline_mode==='test';
+  const semanticChecks=S.qualityChecks.filter(x=>x.stage==='stories'&&x.check_key==='semantic_story_quality'&&(testQualityMode?['passed','skipped'].includes(x.status):x.status==='passed')).length;
+  const qualityReadyForApproval=!qualityRequired||(qualityBlockers.length===0&&qHas('input','required_form_data')&&qHas('story_plan','exact_15_ideas')&&qHas('stories','exact_15_ready')&&qHas('characters','protagonist_reference')&&qHas('illustrations','all_scenes_selected')&&qHas('review_pdf','review_pdf_exists')&&wordChecks===15&&semanticChecks===15);
+  let content='';
+  if(!reviewReady){
+    if(reviewJob?.status==='running'){const done=Number(reviewJob.processed_stories||0),pct=Math.round(done/15*100);content=`<div class="book-preview"><div class="big">⚙️</div><b>Review-PDF wird erstellt</b><span>${done}/15 Geschichten verarbeitet. Das läuft serverseitig weiter.</span></div><div class="progress" style="margin-top:10px"><span style="width:${pct}%"></span></div>`}
+    else if(reviewJob?.status==='failed')content=`<div class="rule red"><b>Review-PDF gestoppt.</b><br>${esc(reviewJob.last_error?.message||reviewJob.last_error||'Unbekannter Fehler')}</div><button class="btn" id="startReviewPdf">Review-PDF erneut erstellen</button>`;
+    else if(all)content=`<div class="nextbox"><h3>1 · Review-PDF erstellen</h3><p>Kontrolliere zuerst Geschichten, Reihenfolge und alle ausgewählten Bilder.</p><button class="btn" id="startReviewPdf">Review-PDF erzeugen</button></div>`;
+    else content='<div class="rule warn"><b>Review-PDF noch gesperrt.</b><br>Geschichten, Figuren oder Bildauswahl sind noch nicht vollständig.</div>';
+  }else{
+    content=`<div class="book-preview"><div class="big">📖</div><b>Review-PDF ist fertig</b><span>Inhaltliche Kontrolle: Geschichten, Reihenfolge und ausgewählte Illustrationen.</span></div><button class="btn secondary" id="openReviewPdf">📄 Review-PDF öffnen</button>`;
+    if(!approved){
+      if(qualityBlockers.length)content+=`<div class="rule red"><b>Review-Freigabe gesperrt.</b><br>${qualityBlockers.length} blockierende Qualitätsprüfung${qualityBlockers.length===1?'':'en'} sind offen.</div>`;
+      else if(!qualityReadyForApproval)content+='<div class="rule warn"><b>Qualitätsprüfung läuft noch.</b><br>Die Freigabe erscheint automatisch, sobald alle Prüfungen abgeschlossen sind.</div>';
+      else content+='<button class="btn ok" id="approveReviewPdf">✓ Inhalte geprüft & freigeben</button>';
+    }else{
+      content+='<div class="rule ok"><b>Inhalte freigegeben ✓</b><br>Diese Freigabe bestellt noch nichts.</div>';
+      if(printRunning)content+=`<div class="nextbox"><h3>2 · Kinderbuch-Innenteil wird gebaut</h3><p>${printDone}/15 Geschichten gesetzt. Bilder und zugehöriger Text werden gemeinsam platziert.</p><div class="progress" style="margin-top:11px;background:#ffffff2b"><span style="width:${printPct}%;background:white"></span></div><button class="btn" disabled>${printPct}% · serverseitig aktiv</button></div>`;
+      else if(!printReady){
+        if(printFailed)content+=`<div class="rule red"><b>Innenteil-Erstellung gestoppt.</b><br>${esc(printJob?.last_error?.message||'Unbekannter Fehler')}</div>`;
+        content+=`<div class="nextbox"><h3>2 · Neues Kinderbuch-Layout erstellen</h3><p>156 Lulu-Seiten mit Fredoka/Nunito, großem Satz und Text direkt bei der passenden Illustration.</p><button class="btn" id="startPrintPdf">${printFailed?'Innenteil repariert neu starten':'Innenteil erstellen'}</button></div>`;
+      }else{
+        const printWarnings=Array.isArray(printMeta.warnings)?printMeta.warnings:[];
+        content+=`<div class="book-preview"><div class="big">📘</div><b>Innenteil bereit</b><span>156 Seiten · 8,5″ × 8,5″ · Fredoka + Nunito · ${esc(printMeta.illustrated_page_count||selected)} Bild-Text-Seiten</span></div><div class="actions"><button class="btn ok" id="openPrintPdf">📘 Öffnen</button><button class="btn secondary" id="startPrintPdf">Neu bauen</button></div>${printWarnings.length?`<div class="rule warn"><b>Druckhinweis.</b><br>Die Ausgangsbilder liegen teils unter den empfohlenen 300 ppi, aber über der internen Mindestgrenze von 200 ppi. Deshalb bleibt die Sichtkontrolle Pflicht.</div>`:''}`;
+        if(coverRunning)content+='<div class="nextbox"><h3>3 · Umschlag wird gebaut</h3><p>Vorderseite, Rücken, Rückseite und Barcode-Freifläche werden an 156 Seiten angepasst.</p><button class="btn" disabled>Umschlag wird erstellt …</button></div>';
+        else if(!coverReady){
+          if(coverFailed)content+=`<div class="rule red"><b>Umschlag-Erstellung gestoppt.</b><br>${esc(coverJob?.last_error?.message||'Unbekannter Fehler')}</div>`;
+          content+=`<div class="nextbox"><h3>3 · Lulu-Umschlag erstellen</h3><p>Großes Titelbild, Story4Kids-Logo, lesbarer Rücken und sichere Beschnittzugabe.</p><button class="btn" id="startCoverPdf">${coverFailed?'Umschlag repariert neu starten':'Umschlag erstellen'}</button></div>`;
+        }else{
+          const coverWarnings=Array.isArray(coverMeta.warnings)?coverMeta.warnings:[];
+          content+=`<div class="book-preview"><div class="big">🎨</div><b>Umschlag bereit</b><span>Rückseite + ${esc(coverMeta.spine_width_mm||'–')} mm Rücken + Vorderseite · Lulu-Vollumschlag</span></div><div class="actions"><button class="btn ok" id="openCoverPdf">🎨 Öffnen</button><button class="btn secondary" id="startCoverPdf">Neu bauen</button></div>${coverWarnings.length?'<div class="rule warn"><b>Druckhinweis.</b><br>Das Titelbild ist für einen großen Umschlag ausreichend, liegt aber unter der idealen 300-ppi-Empfehlung. Bitte bei 100 % prüfen.</div>':''}`;
+          if(!visualApproved){content+=`<div class="section-title">Letzte menschliche Sichtkontrolle</div><div class="card"><div class="row"><div><b>Beide PDFs wirklich ansehen</b><div class="desc">Die Software prüft Maße und Daten. Wirkung, Lesefluss und Bildqualität entscheidest du.</div></div><span class="pill warn">PFLICHT</span></div><div class="approval-list"><label class="approval-check"><input type="checkbox" data-visual-check><span>Schrift ist groß, gut lesbar und nirgends abgeschnitten.</span></label><label class="approval-check"><input type="checkbox" data-visual-check><span>Jedes Bild passt zum Text derselben Seite.</span></label><label class="approval-check"><input type="checkbox" data-visual-check><span>Keine ungewollt leeren Seiten, Überlagerungen oder falschen Seitenfolgen.</span></label><label class="approval-check"><input type="checkbox" data-visual-check><span>Vorderseite, Rücken, Rückseite, Logo und Barcode-Freifläche stimmen.</span></label></div><button class="btn ok" id="approveVisuals" disabled>Finales Buchlayout freigeben</button><div class="inline-note">Diese Freigabe löst keine Bestellung und keine Kosten aus.</div></div>`}
+          else content+=`<div class="okbox"><b>Finales Buchlayout freigegeben ✓</b><br>Die Freigabe gehört exakt zu Innenteil v8, Umschlag v8 und 156 Seiten. Eine Bestellung wurde nicht ausgelöst.</div><button class="btn danger" id="revokeVisuals">Freigabe zurücknehmen</button>`;
+          const luluBlockers=Array.isArray(luluJob?.preflight?.blockers)?luluJob.preflight.blockers:[];
+          content+=`<div class="section-title">Lulu Print API</div><div class="card"><div class="row"><div><b>Technische Druckanbindung</b><div class="desc">Ziel: Österreich · Paperback · Premium-Farbe · matt</div></div><span class="pill ${luluHealth?.credentials_configured?'ok':'warn'}">${luluHealth?.credentials_configured?'VERBUNDEN':'ZUGANG FEHLT'}</span></div><div class="specgrid"><div><b>Format</b><span>8,5″ × 8,5″</span></div><div><b>Seiten</b><span>156</span></div><div><b>Produktcode</b><span>0850X0850…MXX</span></div><div><b>Modus</b><span>${esc(luluHealth?.environment||'sandbox')}</span></div></div>${luluJob?`<div class="rule ${luluBlockers.length?'warn':'ok'}"><b>${luluBlockers.length?'Noch nicht bestellbereit':'Technische Vorprüfung vollständig'}</b>${luluBlockers.length?'<br>'+luluBlockers.slice(0,6).map(luluBlockerLabel).map(esc).join('<br>'):''}</div><button class="btn secondary" id="luluPreflight">Lulu-Vorprüfung aktualisieren</button>${luluHealth?.credentials_configured?'<button class="btn secondary" id="luluSpec">Produktmaß online bestätigen</button>':''}`:'<button class="btn secondary" id="prepareLulu">Lulu-Auftrag sicher vorbereiten</button>'}<div class="rule warn"><b>Bestellung bleibt gesperrt.</b><br>Kein Live-Auftrag ohne vollständige Adresse, aktuelles Angebot, Lulu-Dateivalidierung und zwei ausdrückliche Bestätigungen.</div></div>`;
+        }
+      }
+    }
+  }
+  main.innerHTML=`<button class="backline" onclick="go('request',{id:'${esc(S.request.id)}'})">‹ Auftrag ${esc(S.request.child_first_name)}</button><div class="row"><h2>Fertiges Buch</h2><span class="pill blue">LULU 8,5″</span></div><div class="card">${statusLine('15 Geschichten fertig',storyReady===15)}${statusLine('Figuren freigegeben',charOk)}${statusLine('Illustrationen ausgewählt',imagesOk)}${statusLine('Review-PDF erstellt',reviewReady)}${approved?statusLine('Inhalte freigegeben',true):''}${approved?statusLine('Neues Innenteil erstellt',printReady):''}${printReady?statusLine('Neuer Umschlag erstellt',coverReady):''}${coverReady?statusLine('Finale Sichtkontrolle',visualApproved):''}</div>${content}${qualityPanel(S.qualityChecks)}`;
+  if($('#startReviewPdf'))$('#startReviewPdf').onclick=e=>startReviewPdf(e.currentTarget);
+  if($('#openReviewPdf'))$('#openReviewPdf').onclick=async e=>{try{busy(e.currentTarget,true,'PDF wird geöffnet …');await openPrivatePdf(reviewPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#approveReviewPdf'))$('#approveReviewPdf').onclick=e=>approveReviewPdf(e.currentTarget);
+  if($('#startPrintPdf'))$('#startPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird gestartet …');await invoke('story4kids-print-pdf-v6',{action:'start',request_id:S.request.id,regenerate:true});toast('Neues Innenteil läuft serverseitig.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#openPrintPdf'))$('#openPrintPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Innenteil wird geöffnet …');await openPrivatePdf(printPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#startCoverPdf'))$('#startCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird gestartet …');await invoke('story4kids-cover-pdf-v2',{action:'start',request_id:S.request.id,regenerate:true});toast('Neuer Umschlag läuft serverseitig.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#openCoverPdf'))$('#openCoverPdf').onclick=async e=>{try{busy(e.currentTarget,true,'Umschlag wird geöffnet …');await openPrivatePdf(coverPath)}catch(err){toast(err.message,'err')}finally{busy(e.currentTarget,false)}};
+  if($('#approveVisuals')){const btn=$('#approveVisuals'),checks=[...document.querySelectorAll('[data-visual-check]')];const sync=()=>btn.disabled=!checks.every(x=>x.checked);checks.forEach(x=>x.onchange=sync);btn.onclick=async e=>{if(!confirm('Innenteil und Umschlag als aktuelle Druckfassung freigeben? Dadurch wird noch nichts bestellt.'))return;try{busy(e.currentTarget,true,'Freigabe wird gespeichert …');await invoke('story4kids-lulu',{action:'approve_visuals',request_id:S.request.id,confirm:'APPROVE_FINAL_BOOK_VISUALS'});await loadRequest(S.request.id);toast('Finales Layout freigegeben. Keine Bestellung ausgelöst.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}}}
+  if($('#revokeVisuals'))$('#revokeVisuals').onclick=async e=>{if(!confirm('Finale Layoutfreigabe wirklich zurücknehmen?'))return;try{busy(e.currentTarget,true,'Freigabe wird zurückgenommen …');await invoke('story4kids-lulu',{action:'revoke_visuals',request_id:S.request.id});await loadRequest(S.request.id);toast('Layoutfreigabe zurückgenommen.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#prepareLulu'))$('#prepareLulu').onclick=async e=>{try{busy(e.currentTarget,true,'Lulu wird vorbereitet …');await invoke('story4kids-lulu',{action:'draft',request_id:S.request.id,quantity:1});await loadRequest(S.request.id);toast('Lulu-Entwurf vorbereitet. Keine Bestellung ausgelöst.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#luluPreflight'))$('#luluPreflight').onclick=async e=>{try{busy(e.currentTarget,true,'Vorprüfung läuft …');await invoke('story4kids-lulu',{action:'preflight',job_id:luluJob.id});toast('Lulu-Vorprüfung aktualisiert.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if($('#luluSpec'))$('#luluSpec').onclick=async e=>{try{busy(e.currentTarget,true,'Lulu-Maße werden geprüft …');await invoke('story4kids-lulu',{action:'provider_spec',job_id:luluJob.id});toast('Lulu-Produktmaß bestätigt.','ok');await bookView()}catch(err){toast(err.message,'err')}finally{if(document.body.contains(e.currentTarget))busy(e.currentTarget,false)}};
+  if(reviewJob?.status==='running'||printRunning||coverRunning||(reviewReady&&!approved&&qualityRequired&&!qualityReadyForApproval))setTimeout(async()=>{if(route()!=='book')return;try{await loadRequest(S.request.id);await bookView()}catch{}},4500);
 }
 
 async function maybeAdvanceToBookReview(){
